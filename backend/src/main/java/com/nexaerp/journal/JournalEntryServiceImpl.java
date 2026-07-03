@@ -1,0 +1,333 @@
+package com.nexaerp.journal;
+
+import com.nexaerp.account.Account;
+import com.nexaerp.account.AccountRepository;
+import com.nexaerp.common.exception.BusinessRuleException;
+import com.nexaerp.common.exception.ResourceNotFoundException;
+import com.nexaerp.journal.dto.JournalEntryRequestDto;
+import com.nexaerp.journal.dto.JournalEntryResponseDto;
+import com.nexaerp.journal.dto.JournalLineRequestDto;
+import com.nexaerp.journal.dto.JournalLineResponseDto;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class JournalEntryServiceImpl implements JournalEntryService{
+
+    private final JournalEntryRepository journalEntryRepository;
+    private final JournalLineRepository journalLineRepository;
+    private final AccountRepository accountRepository;
+
+
+    @Override
+    @Transactional
+    public JournalEntryResponseDto create(JournalEntryRequestDto request) {
+        validateLines(request.getLines());
+
+        JournalEntry entry = new JournalEntry();
+        entry.setEntryNumber(generateEntryNumber());
+        entry.setDate(request.getDate());
+        entry.setDescription(request.getDescription());
+        entry.setType(request.getType());
+        entry.setStatus(JournalStatus.DRAFT);
+        entry.setSourceType(JournalSourceType.MANUAL);
+        entry.setReferenceNumber(entry.getEntryNumber());
+
+
+        // Total amount calculate
+        BigDecimal total = request.getLines().stream()
+                .map(JournalLineRequestDto::getDebit)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        entry.setTotalAmount(total);
+
+        JournalEntry saved = journalEntryRepository.save(entry);
+
+        // Lines save
+        List<JournalLine> lines = request.getLines().stream()
+                .map(lineDto -> buildLine(lineDto, saved))
+                .collect(Collectors.toList());
+        journalLineRepository.saveAll(lines);
+        saved.setLines(lines);
+
+        return toResponse(saved);
+    }
+
+    @Override
+    public JournalEntryResponseDto update(Long id, JournalEntryRequestDto request) {
+        JournalEntry entry = journalEntryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Journal entry not found"));
+
+        if (!entry.getStatus().equals(JournalStatus.DRAFT)) {
+            throw new BusinessRuleException("Only DRAFT entries can be updated");
+        }
+
+        validateLines(request.getLines());
+
+        entry.setDate(request.getDate());
+        entry.setDescription(request.getDescription());
+        entry.setType(request.getType());
+
+        // remove older line, replace new line
+        journalLineRepository.deleteAll(entry.getLines());
+
+        BigDecimal total = request.getLines().stream()
+                .map(JournalLineRequestDto::getDebit)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        entry.setTotalAmount(total);
+
+        JournalEntry saved = journalEntryRepository.save(entry);
+
+        List<JournalLine> lines = request.getLines().stream()
+                .map(lineDto -> buildLine(lineDto, saved))
+                .collect(Collectors.toList());
+        journalLineRepository.saveAll(lines);
+        saved.setLines(lines);
+
+        return toResponse(saved);
+    }
+
+    @Override
+    public JournalEntryResponseDto getById(Long id) {
+        JournalEntry entry = journalEntryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Journal entry not found"));
+        return toResponse(entry);
+    }
+
+    @Override
+    public List<JournalEntryResponseDto> getAll() {
+        return journalEntryRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public JournalEntryResponseDto post(Long id) {
+        JournalEntry entry = journalEntryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Journal entry not found"));
+
+        if (entry.getStatus() == JournalStatus.POSTED) {
+            throw new BusinessRuleException("Journal entry is already posted");
+        }
+
+        if (entry.getStatus() == JournalStatus.REVERSED) {
+            throw new BusinessRuleException("Cannot post a reversed journal entry");
+        }
+
+        if (!entry.getStatus().equals(JournalStatus.DRAFT)) {
+            throw new BusinessRuleException("Only DRAFT entries can be posted");
+        }
+
+        if (entry.getLines() == null || entry.getLines().isEmpty()) {
+            throw new BusinessRuleException("Cannot post a journal entry with zero lines");
+        }
+
+        BigDecimal totalDebit = entry.getLines().stream()
+                .map(JournalLine::getDebit)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalCredit = entry.getLines().stream()
+                .map(JournalLine::getCredit)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (totalDebit.compareTo(totalCredit) != 0) {
+            throw new BusinessRuleException("Total debit must equal total credit before posting");
+        }
+
+        // Balance update
+        for (JournalLine line : entry.getLines()) {
+            updateAccountBalance(line);
+        }
+
+        entry.setStatus(JournalStatus.POSTED);
+        return toResponse(journalEntryRepository.save(entry));
+    }
+
+    @Override
+    @Transactional
+    public JournalEntryResponseDto reverse(Long id) {
+        JournalEntry original = journalEntryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Journal entry not found"));
+
+        if (original.getStatus() == JournalStatus.REVERSED) {
+            throw new BusinessRuleException("Journal entry is already reversed");
+        }
+
+        if (!original.getStatus().equals(JournalStatus.POSTED)) {
+            throw new BusinessRuleException("Only POSTED entries can be reversed");
+        }
+
+        // Reverse entry makes
+        JournalEntry reversal = new JournalEntry();
+        reversal.setEntryNumber(generateEntryNumber());
+        reversal.setDate(LocalDate.now());
+        reversal.setDescription("Reversal of " + original.getEntryNumber());
+        reversal.setType(original.getType());
+        reversal.setStatus(JournalStatus.DRAFT);
+        reversal.setSourceType(JournalSourceType.MANUAL);
+        reversal.setReversedFromId(original.getId());
+        reversal.setTotalAmount(original.getTotalAmount());
+
+        JournalEntry savedReversal = journalEntryRepository.save(reversal);
+
+        // make reverse Lines
+        List<JournalLine> reversalLines = original.getLines().stream()
+                .map(line -> JournalLine.builder()
+                        .journalEntry(savedReversal)
+                        .account(line.getAccount())
+                        .debit(line.getCredit())   // reverse
+                        .credit(line.getDebit())   // reverse
+                        .description("Reversal: " + line.getDescription())
+                        .build())
+                .collect(Collectors.toList());
+
+        journalLineRepository.saveAll(reversalLines);
+        savedReversal.setLines(reversalLines);
+
+        // Original REVERSED mark
+        original.setStatus(JournalStatus.REVERSED);
+        journalEntryRepository.save(original);
+
+        return toResponse(savedReversal);
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+
+        JournalEntry entry = journalEntryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Journal entry not found"));
+
+        if (!entry.getStatus().equals(JournalStatus.DRAFT)) {
+            throw new BusinessRuleException("Only DRAFT entries can be deleted");
+        }
+
+        journalEntryRepository.delete(entry);
+
+    }
+
+                                // -- Private Helpers --
+
+    private void validateLines(List<JournalLineRequestDto> lines) {
+
+        BigDecimal totalDebit = lines.stream()
+                .map(JournalLineRequestDto::getDebit)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalCredit = lines.stream()
+                .map(JournalLineRequestDto::getCredit)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (totalDebit.compareTo(totalCredit) != 0) {
+            throw new BusinessRuleException(
+                    "Total debit (" + totalDebit + ") must equal total credit (" + totalCredit + ")"
+            );
+        }
+        // "Every line must contain either a debit or a credit, never both together"
+        for (JournalLineRequestDto line : lines) {
+            if (line.getDebit().compareTo(BigDecimal.ZERO) > 0
+                    && line.getCredit().compareTo(BigDecimal.ZERO) > 0) {
+                throw new BusinessRuleException("A line cannot have both debit and credit");
+            }
+            if (line.getDebit().compareTo(BigDecimal.ZERO) == 0
+                    && line.getCredit().compareTo(BigDecimal.ZERO) == 0) {
+                throw new BusinessRuleException("A line must have either debit or credit");
+            }
+        }
+    }
+
+    private void updateAccountBalance(JournalLine line) {
+
+        Account account = line.getAccount();
+
+        switch (account.getType()) {
+            case ASSET:
+            case EXPENSE:
+                // Debit Increase, Credit Decrease
+                account.setCurrentBalance(
+                        account.getCurrentBalance()
+                                .add(line.getDebit())
+                                .subtract(line.getCredit())
+                );
+                break;
+            case LIABILITY:
+            case EQUITY:
+            case REVENUE:
+                // Credit Increase, Debit Decrease
+                account.setCurrentBalance(
+                        account.getCurrentBalance()
+                                .add(line.getCredit())
+                                .subtract(line.getDebit())
+                );
+                break;
+        }
+
+        accountRepository.save(account);
+    }
+
+    private String generateEntryNumber() {
+        return journalEntryRepository.findTopByOrderByIdDesc()
+                .map(last -> {
+                    String lastNumber = last.getEntryNumber().replace("JE-", "");
+                    int next = Integer.parseInt(lastNumber) + 1;
+                    return String.format("JE-%04d", next);
+                })
+                .orElse("JE-0001");
+    }
+
+    private JournalLine buildLine(JournalLineRequestDto dto, JournalEntry entry) {
+        Account account = accountRepository.findById(dto.getAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + dto.getAccountId()));
+
+        return JournalLine.builder()
+                .journalEntry(entry)
+                .account(account)
+                .debit(dto.getDebit())
+                .credit(dto.getCredit())
+                .description(dto.getDescription())
+                .build();
+    }
+
+                                     // -- Mappers --
+
+    private JournalEntryResponseDto toResponse(JournalEntry entry) {
+        JournalEntryResponseDto dto = JournalEntryResponseDto.builder()
+                .id(entry.getId())
+                .entryNumber(entry.getEntryNumber())
+                .date(entry.getDate())
+                .description(entry.getDescription())
+                .type(entry.getType())
+                .status(entry.getStatus())
+                .sourceType(entry.getSourceType())
+                .totalAmount(entry.getTotalAmount())
+                .build();
+
+        if (entry.getLines() != null) {
+            dto.setLines(entry.getLines().stream()
+                    .map(this::toLineResponse)
+                    .collect(Collectors.toList()));
+        }
+
+        return dto;
+    }
+
+    private JournalLineResponseDto toLineResponse(JournalLine line) {
+        return JournalLineResponseDto.builder()
+                .id(line.getId())
+                .accountId(line.getAccount().getId())
+                .accountName(line.getAccount().getName())
+                .accountCode(line.getAccount().getCode())
+                .debit(line.getDebit())
+                .credit(line.getCredit())
+                .description(line.getDescription())
+                .build();
+    }
+}

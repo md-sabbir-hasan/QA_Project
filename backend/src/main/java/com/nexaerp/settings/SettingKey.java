@@ -1,0 +1,25 @@
+package com.nexaerp.settings;
+
+public enum SettingKey {
+    // Default Accounts
+    DEFAULT_RECEIVABLE_ACCOUNT,
+    DEFAULT_PAYABLE_ACCOUNT,
+    DEFAULT_SALES_REVENUE,
+    DEFAULT_VAT_PAYABLE,
+    DEFAULT_INPUT_VAT,
+    DEFAULT_TDS_PAYABLE,
+    DEFAULT_OPENING_EQUITY,
+
+    // Company Settings (future)
+    COMPANY_NAME,
+    DEFAULT_CURRENCY,
+    FINANCIAL_YEAR,
+    DECIMAL_PRECISION,
+    TIMEZONE,
+    DATE_FORMAT,
+
+    // Feature Flags (future)
+    AUTO_POST_INVOICE,
+    ALLOW_NEGATIVE_STOCK,
+    DEFAULT_WAREHOUSE
+}
