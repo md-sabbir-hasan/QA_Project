@@ -1,23 +1,45 @@
-.app-layout {
+.erp-shell {
+  min-height: 100vh;
   display: flex;
-  flex-direction: column;
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-  font-family: 'Inter', sans-serif;
-  background-color: #f5f6fa;
+  background: #f8fafc;
 }
 
-.main-container {
-  display: flex;
+.erp-main {
   flex: 1;
-  height: calc(100vh - 60px);
-  overflow: hidden;
+  min-width: 0;
+  margin-left: 260px;
+  transition: margin-left 0.2s ease;
 }
 
-.content-area {
-  flex: 1;
-  padding: 1.5rem;
-  overflow-y: auto;
-  box-sizing: border-box;
+.erp-shell.sidebar-collapsed {
+  .erp-main {
+    margin-left: 78px;
+  }
+}
+
+.erp-content {
+  padding: 24px;
+  overflow-x: hidden;
+}
+
+@media (max-width: 992px) {
+  .erp-main {
+    margin-left: 78px;
+  }
+
+  .erp-content {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .erp-main {
+    margin-left: 0;
+  }
+
+  .erp-shell.sidebar-collapsed {
+    .erp-main {
+      margin-left: 0;
+    }
+  }
 }

@@ -1,31 +1,32 @@
 import { Injectable } from '@angular/core';
 import { jwtDecode } from 'jwt-decode';
-import { APP_CONFIG } from '../config/app.config';
+import { STORAGE_KEYS } from '../constants/storage.constants';
 import { JwtPayload } from '../models/jwt-payload.model';
 import { StorageService } from './storage.service';
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: 'root'
 })
 export class TokenService {
+
   constructor(private storage: StorageService) {}
 
   getAccessToken(): string | null {
-    return this.storage.get<string>(APP_CONFIG.storageKeys.accessToken);
+    return this.storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN);
   }
 
   getRefreshToken(): string | null {
-    return this.storage.get<string>(APP_CONFIG.storageKeys.refreshToken);
+    return this.storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN);
   }
 
   saveTokens(accessToken: string, refreshToken: string): void {
-    this.storage.set(APP_CONFIG.storageKeys.accessToken, accessToken);
-    this.storage.set(APP_CONFIG.storageKeys.refreshToken, refreshToken);
+    this.storage.set(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+    this.storage.set(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
   }
 
   clearTokens(): void {
-    this.storage.remove(APP_CONFIG.storageKeys.accessToken);
-    this.storage.remove(APP_CONFIG.storageKeys.refreshToken);
+    this.storage.remove(STORAGE_KEYS.ACCESS_TOKEN);
+    this.storage.remove(STORAGE_KEYS.REFRESH_TOKEN);
   }
 
   isLoggedIn(): boolean {
@@ -62,7 +63,6 @@ export class TokenService {
       return true;
     }
 
-    const expiryTime = payload.exp * 1000;
-    return Date.now() >= expiryTime;
+    return Date.now() >= payload.exp * 1000;
   }
 }

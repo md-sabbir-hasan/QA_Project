@@ -12,6 +12,11 @@ import com.nexaerp.user.dto.UserResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nexaerp.common.response.PageResponseDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +43,7 @@ public class UserServiceImpl implements UserService {
         }
 
         Set<Role> roles = getRoles(request.getRoleIds());
+        preventSuperAdminRoleAssignment(roles, null);
 
         User user = User.builder()
                 .name(request.getName())
@@ -71,6 +77,11 @@ public class UserServiceImpl implements UserService {
             throw new BusinessRuleException("Email already exists: " + request.getEmail());
         }
 
+        Set<Role> roles = getRoles(request.getRoleIds());
+
+        preventSuperAdminUserUpdate(user);
+        preventSuperAdminRoleAssignment(roles, user);
+
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setRoles(getRoles(request.getRoleIds()));
@@ -102,21 +113,119 @@ public class UserServiceImpl implements UserService {
                 .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+
+
+    }
+
+
+    @Override
+    public PageResponseDto<UserResponseDto> getAllPaged(
+            int page,
+            int size,
+            String search,
+            UserStatus status
+    ) {
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Direction.DESC, "id")
+        );
+
+        boolean hasSearch = search != null && !search.trim().isEmpty();
+
+        Page<User> users;
+
+        if (hasSearch && status != null) {
+            String keyword = search.trim();
+
+            users = userRepository
+                    .findByStatusAndNameContainingIgnoreCaseOrStatusAndEmailContainingIgnoreCase(
+                            status,
+                            keyword,
+                            status,
+                            keyword,
+                            pageable
+                    );
+        } else if (hasSearch) {
+            String keyword = search.trim();
+
+            users = userRepository
+                    .findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                            keyword,
+                            keyword,
+                            pageable
+                    );
+        } else if (status != null) {
+            users = userRepository.findByStatus(status, pageable);
+        } else {
+            users = userRepository.findAll(pageable);
+        }
+
+        Page<UserResponseDto> responsePage = users.map(this::toResponse);
+
+        return PageResponseDto.from(responsePage);
     }
 
     @Override
-    public void deactivate(Long id) {
+    @Transactional
+    public void deactivate(Long id, String currentUserEmail) {
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        // self account can not deactivate
+        if (user.getEmail().equalsIgnoreCase(currentUserEmail)) {
+            throw new BusinessRuleException("You cannot deactivate your own account");
+        }
+
+        // Super Admin account can not deactivate
+        boolean isSuperAdmin = user.getRoles().stream()
+                .anyMatch(role -> role.getName().equalsIgnoreCase("SUPER_ADMIN"));
+
+        if (isSuperAdmin) {
+            throw new BusinessRuleException("SUPER_ADMIN account cannot be deactivated");
+        }
+
+        // Already inactive check
+        if (user.getStatus() == UserStatus.INACTIVE) {
+            throw new BusinessRuleException("User is already inactive");
+        }
+
+        UserStatus oldStatus = user.getStatus();
+
         user.setStatus(UserStatus.INACTIVE);
         userRepository.save(user);
-        // Audit
+
         auditLogService.log(
                 AuditAction.DEACTIVATED,
                 "USER",
                 user.getId(),
-                "ACTIVE",
+                oldStatus.name(),
                 "INACTIVE"
+        );
+    }
+
+    @Override
+    @Transactional
+    public void activate(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (user.getStatus() == UserStatus.ACTIVE) {
+            throw new BusinessRuleException("User is already active");
+        }
+
+        UserStatus oldStatus = user.getStatus();
+
+        user.setStatus(UserStatus.ACTIVE);
+        userRepository.save(user);
+
+        auditLogService.log(
+                AuditAction.ACTIVATED,
+                "USER",
+                user.getId(),
+                oldStatus.name(),
+                "ACTIVE"
         );
     }
 
@@ -156,6 +265,25 @@ public class UserServiceImpl implements UserService {
                 .roles(roleNames)
                 .permissions(permissions)
                 .build();
+    }
+
+
+    private void preventSuperAdminUserUpdate(User user) {
+        boolean isSuperAdminUser = user.getRoles().stream()
+                .anyMatch(role -> role.getName().equalsIgnoreCase("SUPER_ADMIN"));
+
+        if (isSuperAdminUser) {
+            throw new BusinessRuleException("SUPER_ADMIN user cannot be updated");
+        }
+    }
+
+    private void preventSuperAdminRoleAssignment(Set<Role> roles, User existingUser) {
+        boolean hasSuperAdminRole = roles.stream()
+                .anyMatch(role -> role.getName().equalsIgnoreCase("SUPER_ADMIN"));
+
+        if (hasSuperAdminRole) {
+            throw new BusinessRuleException("SUPER_ADMIN role cannot be assigned manually");
+        }
     }
 
 }

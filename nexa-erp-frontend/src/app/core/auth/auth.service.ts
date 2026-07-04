@@ -14,7 +14,7 @@ import {
 import { CurrentUser } from '../models/current-user.model';
 import { StorageService } from '../services/storage.service';
 import { TokenService } from '../services/token.service';
-import { AuthStore } from './auth.store';
+import { STORAGE_KEYS } from '../constants/storage.constants';
 
 @Injectable({
   providedIn: 'root',
@@ -31,10 +31,9 @@ export class AuthService {
     private http: HttpClient,
     private tokenService: TokenService,
     private storage: StorageService,
-    private authStore: AuthStore,
   ) {
     this.currentUserSignal = signal<CurrentUser | null>(
-      this.storage.get<CurrentUser>(APP_CONFIG.storageKeys.currentUser),
+      this.storage.get<CurrentUser>(STORAGE_KEYS.CURRENT_USER),
     );
 
     this.currentUser = this.currentUserSignal.asReadonly();
@@ -57,7 +56,7 @@ export class AuthService {
           permissions: [],
         };
 
-        this.storage.set(APP_CONFIG.storageKeys.currentUser, user);
+        this.storage.set(STORAGE_KEYS.CURRENT_USER, user);
         this.currentUserSignal.set(user);
       }),
     );
@@ -83,7 +82,7 @@ export class AuthService {
 
   clearSession(): void {
     this.tokenService.clearTokens();
-    this.storage.remove(APP_CONFIG.storageKeys.currentUser);
+    this.storage.remove(STORAGE_KEYS.CURRENT_USER);
     this.currentUserSignal.set(null);
   }
 

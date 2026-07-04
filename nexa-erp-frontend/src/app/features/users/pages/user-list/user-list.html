@@ -1,0 +1,118 @@
+<div class="users-page">
+  <div class="page-header">
+    <div>
+      <h1>Users</h1>
+      <p>Manage system users, roles and access status</p>
+    </div>
+
+    <button class="primary-btn" type="button">
+      <i class="bi bi-plus-lg"></i>
+      Invite User
+    </button>
+  </div>
+
+  <div class="filter-card">
+    <input
+      type="text"
+      [(ngModel)]="search"
+      placeholder="Search by name or email"
+      (keyup.enter)="onSearch()"
+    />
+
+    <select [(ngModel)]="status">
+      <option value="">All Status</option>
+      <option value="PENDING">Pending</option>
+      <option value="ACTIVE">Active</option>
+      <option value="INACTIVE">Inactive</option>
+      <option value="LOCKED">Locked</option>
+    </select>
+
+    <button class="search-btn" type="button" (click)="onSearch()">Search</button>
+    <button class="clear-btn" type="button" (click)="clearSearch()">Clear</button>
+  </div>
+
+  <div class="table-card">
+    @if (loading()) {
+      <div class="state-box">
+        <i class="bi bi-arrow-repeat spin"></i>
+        Loading users...
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Roles</th>
+              <th>Last Login</th>
+              <th>Created</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (user of users(); track user.id) {
+              <tr>
+                <td>
+                  <div class="user-cell">
+                    <div class="avatar">{{ user.name.charAt(0) }}</div>
+                    <div>
+                      <strong>{{ user.name }}</strong>
+                      <span>ID: {{ user.id }}</span>
+                    </div>
+                  </div>
+                </td>
+
+                <td>{{ user.email }}</td>
+
+                <td>
+                  <span class="status" [class]="user.status.toLowerCase()">
+                    {{ user.status }}
+                  </span>
+                </td>
+
+                <td>
+                  <span class="role-pill">
+                    {{ user.roles.join(', ') || '-' }}
+                  </span>
+                </td>
+
+                <td>{{ user.lastLoginAt ? (user.lastLoginAt | date:'medium') : '-' }}</td>
+                <td>{{ user.createdAt | date:'mediumDate' }}</td>
+
+                <td class="text-end">
+                  <button
+                    class="action-btn danger"
+                    type="button"
+                    [disabled]="user.status === 'INACTIVE'"
+                    (click)="deactivateUser(user)"
+                  >
+                    <i class="bi bi-slash-circle"></i>
+                    Deactivate
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7">
+                  <div class="state-box">No users found</div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <div class="pagination">
+      <span>Page {{ page + 1 }} of {{ totalPages || 1 }} · Total {{ totalElements }}</span>
+
+      <div>
+        <button type="button" (click)="previousPage()" [disabled]="page === 0">Prev</button>
+        <button type="button" (click)="nextPage()" [disabled]="page + 1 >= totalPages">Next</button>
+      </div>
+    </div>
+  </div>
+</div>

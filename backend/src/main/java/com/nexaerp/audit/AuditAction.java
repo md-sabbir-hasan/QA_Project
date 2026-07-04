@@ -8,6 +8,7 @@ public enum AuditAction {
     APPROVED,
     CANCELLED,
     REVERSED,
+    ACTIVATED,
     DEACTIVATED,
     LOGIN,
     LOGOUT,

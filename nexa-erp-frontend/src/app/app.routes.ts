@@ -20,6 +20,15 @@ export const routes: Routes = [
         path: 'dashboard',
         component: DashboardComponent,
       },
+
+      // 👇 এখানে add করবে
+      {
+        path: 'users',
+        loadComponent: () =>
+          import('./features/users/pages/user-list/user-list')
+            .then(m => m.UserList),
+      },
+
       {
         path: '',
         pathMatch: 'full',

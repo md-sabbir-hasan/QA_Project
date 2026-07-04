@@ -1,6 +1,23 @@
-<header class="header">
-  <div class="logo">NexaERP</div>
-  <div class="user-profile">
-    <span>Welcome, Admin</span>
+<header class="erp-header">
+  <div class="header-left">
+    <button class="icon-btn" type="button" (click)="toggleSidebar.emit()">
+      <i class="bi bi-list"></i>
+    </button>
+
+    <div>
+      <h2>Dashboard</h2>
+      <span>Welcome to NexaERP</span>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <button class="icon-btn" type="button">
+      <i class="bi bi-bell"></i>
+    </button>
+
+    <button class="user-btn" type="button" (click)="logout()">
+      <i class="bi bi-person-circle"></i>
+      <span>Logout</span>
+    </button>
   </div>
 </header>
