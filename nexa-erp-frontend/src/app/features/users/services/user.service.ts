@@ -7,18 +7,20 @@ import { PageResponse } from '../../../core/models/page.model';
 import { User, UserRequest, UserStatus } from '../models/user.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class UserService {
-
   private readonly baseUrl = `${APP_CONFIG.apiUrl}/users`;
 
   constructor(private http: HttpClient) {}
 
-  getUsers(page = 0, size = 10, search = '', status?: UserStatus): Observable<ApiResponse<PageResponse<User>>> {
-    let params = new HttpParams()
-      .set('page', page)
-      .set('size', size);
+  getUsers(
+    page = 0,
+    size = 10,
+    search = '',
+    status?: UserStatus,
+  ): Observable<ApiResponse<PageResponse<User>>> {
+    let params = new HttpParams().set('page', page).set('size', size);
 
     if (search.trim()) {
       params = params.set('search', search.trim());
@@ -45,5 +47,9 @@ export class UserService {
 
   deactivate(id: number): Observable<ApiResponse<null>> {
     return this.http.patch<ApiResponse<null>>(`${this.baseUrl}/${id}/deactivate`, {});
+  }
+
+  activate(id: number): Observable<ApiResponse<null>> {
+    return this.http.patch<ApiResponse<null>>(`${this.baseUrl}/${id}/activate`, {});
   }
 }

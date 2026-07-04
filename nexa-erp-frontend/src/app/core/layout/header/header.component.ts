@@ -7,24 +7,26 @@ import { AuthService } from '../../auth/auth.service';
   standalone: true,
   imports: [],
   templateUrl: './header.component.html',
-  styleUrl: './header.component.scss'
+  styleUrl: './header.component.scss',
 })
 export class HeaderComponent {
-
   @Output() toggleSidebar = new EventEmitter<void>();
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
   ) {}
 
   logout(): void {
     this.authService.logout().subscribe({
-      next: () => this.router.navigate(['/login']),
+      next: () => {
+        this.authService.clearSession();
+        this.router.navigate(['/login']);
+      },
       error: () => {
         this.authService.clearSession();
         this.router.navigate(['/login']);
-      }
+      },
     });
   }
 }

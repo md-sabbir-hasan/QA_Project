@@ -12,6 +12,11 @@ export const routes: Routes = [
     canActivate: [guestGuard],
   },
   {
+    path: 'set-password',
+    loadComponent: () =>
+      import('./features/auth/pages/set-password/set-password').then((m) => m.SetPassword),
+  },
+  {
     path: '',
     component: ShellComponent,
     canActivate: [authGuard],
@@ -21,12 +26,10 @@ export const routes: Routes = [
         component: DashboardComponent,
       },
 
-      // 👇 এখানে add করবে
       {
         path: 'users',
         loadComponent: () =>
-          import('./features/users/pages/user-list/user-list')
-            .then(m => m.UserList),
+          import('./features/users/pages/user-list/user-list').then((m) => m.UserList),
       },
 
       {
