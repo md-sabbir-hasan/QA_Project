@@ -1,14 +1,9 @@
-export interface RolePermission {
-  id: number;
-  code: string;
-  name: string;
-  module: string;
-}
+import { Permission } from './permission.model';
 
 export interface Role {
   id: number;
   name: string;
   description: string;
-  permissions: RolePermission[];
+  permissions: Permission[];
   userCount: number;
 }

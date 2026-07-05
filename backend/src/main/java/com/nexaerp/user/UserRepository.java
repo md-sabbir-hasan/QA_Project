@@ -32,4 +32,6 @@ public interface UserRepository extends JpaRepository<User, Long>{
             String email,
             Pageable pageable
     );
+
+    long countByRoles_Id(Long roleId);
 }

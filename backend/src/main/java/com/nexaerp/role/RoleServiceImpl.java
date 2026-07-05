@@ -69,6 +69,11 @@ public class RoleServiceImpl implements RoleService{
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
 
+
+        if (role.getName().equalsIgnoreCase("SUPER_ADMIN")) {
+            throw new BusinessRuleException("SUPER_ADMIN role cannot be updated");
+        }
+
         // Name change then -- unique check
         if (!role.getName().equals(request.getName()) &&
                 roleRepository.existsByName(request.getName())) {
@@ -91,6 +96,10 @@ public class RoleServiceImpl implements RoleService{
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
 
+        if (role.getName().equalsIgnoreCase("SUPER_ADMIN")) {
+            throw new BusinessRuleException("SUPER_ADMIN permissions cannot be modified");
+        }
+
         // Add new permissions to existing ones
         Set<Permission> newPermissions = getPermissions(permissionIds);
         role.getPermissions().addAll(newPermissions);
@@ -103,6 +112,11 @@ public class RoleServiceImpl implements RoleService{
     public RoleResponseDto removePermissions(Long id, Set<Long> permissionIds) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
+
+        if (role.getName().equalsIgnoreCase("SUPER_ADMIN")) {
+            throw new BusinessRuleException("SUPER_ADMIN permissions cannot be modified");
+        }
+
 
         // Remove specified permissions
         role.getPermissions().removeIf(p -> permissionIds.contains(p.getId()));
@@ -129,11 +143,13 @@ public class RoleServiceImpl implements RoleService{
     private RoleResponseDto toResponse(Role role) {
 
         // Count users with this role
-        long userCount = userRepository.findAll()
-                .stream()
-                .filter(u -> u.getRoles().stream()
-                        .anyMatch(r -> r.getId().equals(role.getId())))
-                .count();
+//        long userCount = userRepository.findAll()
+//                .stream()
+//                .filter(u -> u.getRoles().stream()
+//                        .anyMatch(r -> r.getId().equals(role.getId())))
+//                .count();
+
+        long userCount = userRepository.countByRoles_Id(role.getId());
 
         Set<RoleResponseDto.PermissionDto> permissionDtos = role.getPermissions()
                 .stream()
