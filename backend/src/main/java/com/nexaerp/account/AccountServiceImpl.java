@@ -2,10 +2,14 @@ package com.nexaerp.account;
 
 import com.nexaerp.account.dto.AccountRequestDto;
 import com.nexaerp.account.dto.AccountResponseDto;
+import com.nexaerp.audit.AuditAction;
+import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
+import com.nexaerp.journal.JournalLineRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -15,6 +19,8 @@ import java.util.stream.Collectors;
 public class AccountServiceImpl implements AccountService{
 
     private final AccountRepository accountRepository;
+    private final AuditLogService auditLogService;
+    private final JournalLineRepository journalLineRepository;
 
     @Override
     public AccountResponseDto create(AccountRequestDto request) {
@@ -36,7 +42,10 @@ public class AccountServiceImpl implements AccountService{
             Account parent = accountRepository.findById(request.getParentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Parent account not found"));
 
-            // Child type = parent type
+            if (!parent.getIsActive()) {
+                throw new BusinessRuleException("Cannot create child under inactive parent account");
+            }
+
             if (!parent.getType().equals(request.getType())) {
                 throw new BusinessRuleException("Child account type must match parent account type");
             }
@@ -45,23 +54,55 @@ public class AccountServiceImpl implements AccountService{
         }
 
         Account saved = accountRepository.save(account);
+        auditLogService.log(
+                AuditAction.CREATED,
+                "ACCOUNT",
+                saved.getId(),
+                null,
+                saved.getCode() + " - " + saved.getName()
+        );
+
         return toResponse(saved);
     }
 
     @Override
+    @Transactional
     public AccountResponseDto update(Long id, AccountRequestDto request) {
+
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
-        //Can not change Default account type
-        if (account.getIsDefault() && !account.getType().equals(request.getType())) {
-            throw new BusinessRuleException("Cannot change type of a default account");
+        // Root account protection
+        validateAccountModification(account);
+
+        // Default account protection
+        if (account.getIsDefault()) {
+            throw new BusinessRuleException("Default system account cannot be updated");
+        }
+
+        // Code immutable
+        if (!account.getCode().equals(request.getCode())) {
+            throw new BusinessRuleException("Account code cannot be changed after creation");
+        }
+
+        // Type immutable
+        if (!account.getType().equals(request.getType())) {
+            throw new BusinessRuleException("Account type cannot be changed after creation");
         }
 
         account.setName(request.getName());
         account.setDescription(request.getDescription());
 
         Account saved = accountRepository.save(account);
+
+        auditLogService.log(
+                AuditAction.UPDATED,
+                "ACCOUNT",
+                saved.getId(),
+                null,
+                saved.getCode() + " - " + saved.getName()
+        );
+
         return toResponse(saved);
     }
 
@@ -99,17 +140,134 @@ public class AccountServiceImpl implements AccountService{
     }
 
     @Override
+    @Transactional
     public void deactivate(Long id) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+
+        validateAccountModification(account);
 
         if (account.getIsDefault()) {
             throw new BusinessRuleException("Cannot deactivate a default system account");
         }
 
+        if (!account.getIsActive()) {
+            throw new BusinessRuleException("Account is already inactive");
+        }
+
+        if (accountRepository.existsByParentId(id)) {
+            throw new BusinessRuleException("Cannot deactivate account with child accounts");
+        }
+
+        if (journalLineRepository.existsByAccountId(id)) {
+            throw new BusinessRuleException("Cannot deactivate account used in journal entries");
+        }
+
         account.setIsActive(false);
         accountRepository.save(account);
 
+        auditLogService.log(
+                AuditAction.DEACTIVATED,
+                "ACCOUNT",
+                account.getId(),
+                "ACTIVE",
+                "INACTIVE"
+        );
+    }
+
+    @Override
+    @Transactional
+    public void activate(Long id) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+
+        if (account.getIsActive()) {
+            throw new BusinessRuleException("Account is already active");
+        }
+
+        if (account.getParent() != null && !account.getParent().getIsActive()) {
+            throw new BusinessRuleException("Cannot activate account while parent account is inactive");
+        }
+
+        account.setIsActive(true);
+        accountRepository.save(account);
+        auditLogService.log(
+                AuditAction.ACTIVATED,
+                "ACCOUNT",
+                account.getId(),
+                "INACTIVE",
+                "ACTIVE"
+        );
+    }
+
+
+    @Override
+    public List<AccountResponseDto> search(String keyword, AccountType type, Boolean active) {
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+
+        List<Account> accounts;
+
+        if (hasKeyword && type != null && active != null) {
+            String key = keyword.trim();
+            accounts = accountRepository
+                    .findByTypeAndIsActiveAndNameContainingIgnoreCaseOrTypeAndIsActiveAndCodeContainingIgnoreCase(
+                            type, active, key,
+                            type, active, key
+                    );
+        } else if (hasKeyword && type != null) {
+            String key = keyword.trim();
+            accounts = accountRepository
+                    .findByTypeAndNameContainingIgnoreCaseOrTypeAndCodeContainingIgnoreCase(
+                            type, key,
+                            type, key
+                    );
+        } else if (hasKeyword && active != null) {
+            String key = keyword.trim();
+            accounts = accountRepository
+                    .findByIsActiveAndNameContainingIgnoreCaseOrIsActiveAndCodeContainingIgnoreCase(
+                            active, key,
+                            active, key
+                    );
+        } else if (type != null && active != null) {
+            accounts = accountRepository.findByTypeAndIsActive(type, active);
+        } else if (hasKeyword) {
+            String key = keyword.trim();
+            accounts = accountRepository
+                    .findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(key, key);
+        } else if (type != null) {
+            accounts = accountRepository.findByType(type);
+        } else if (active != null) {
+            accounts = accountRepository.findByIsActive(active);
+        } else {
+            accounts = accountRepository.findAll();
+        }
+
+        return accounts.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+
+
+
+    // =========================helper----------
+
+
+    private boolean isRootAccount(Account account) {
+        return account.getParent() == null;
+    }
+
+    private void validateAccountModification(Account account) {
+
+        if (account.getParent() == null) {
+            throw new BusinessRuleException(
+                    "Root account cannot be modified");
+        }
+
+        if (account.getIsDefault()) {
+            throw new BusinessRuleException(
+                    "Default system account cannot be modified");
+        }
     }
 
                                   // -- Mapper --

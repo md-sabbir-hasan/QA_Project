@@ -34,14 +34,20 @@ export const routes: Routes = [
       {
         path: 'roles',
         loadComponent: () =>
-          import('./features/roles/pages/role-list/role-list')
-            .then(m => m.RoleList),
+          import('./features/roles/pages/role-list/role-list').then((m) => m.RoleList),
       },
       {
         path: 'permissions',
         loadComponent: () =>
-          import('./features/permissions/pages/permission-list/permission-list')
-            .then(m => m.PermissionList),
+          import('./features/permissions/pages/permission-list/permission-list').then(
+            (m) => m.PermissionList,
+          ),
+      },
+
+      {
+        path: 'accounts',
+        loadComponent: () =>
+          import('./features/accounts/pages/account-list/account-list').then((m) => m.AccountList),
       },
 
       {

@@ -18,4 +18,8 @@ public interface AccountService {
     List<AccountResponseDto> getByType(AccountType type);
 
     void deactivate(Long id);
+
+    List<AccountResponseDto> search(String keyword, AccountType type, Boolean active);
+
+    void activate(Long id);
 }

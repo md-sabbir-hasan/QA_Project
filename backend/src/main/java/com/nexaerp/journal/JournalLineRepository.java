@@ -21,5 +21,7 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, Long> 
     List<JournalLine> findByAccountIdAndJournalEntry_DateBefore(
             Long accountId, LocalDate fromDate);
 
+    boolean existsByAccountId(Long accountId);
+
 
 }

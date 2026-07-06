@@ -53,11 +53,40 @@ public class AccountController {
         return ResponseEntity.ok(ApiResponse.success(accountService.getByType(type)));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('EDIT_ACCOUNT')")
+    public ResponseEntity<ApiResponse<AccountResponseDto>> update(
+            @PathVariable Long id,
+            @Valid @RequestBody AccountRequestDto request
+    ) {
+        AccountResponseDto response = accountService.update(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Account updated", response));
+    }
+
     @PatchMapping("/{id}/deactivate")
     @PreAuthorize("hasAuthority('DEACTIVATE_ACCOUNT')")
     public ResponseEntity<ApiResponse<Void>> deactivate(@PathVariable Long id) {
         accountService.deactivate(id);
         return ResponseEntity.ok(ApiResponse.success("Account deactivated", null));
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAuthority('VIEW_ACCOUNTS')")
+    public ResponseEntity<ApiResponse<List<AccountResponseDto>>> search(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) AccountType type,
+            @RequestParam(required = false) Boolean active
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                accountService.search(keyword, type, active)
+        ));
+    }
+
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasAuthority('EDIT_ACCOUNT')")
+    public ResponseEntity<ApiResponse<Void>> activate(@PathVariable Long id) {
+        accountService.activate(id);
+        return ResponseEntity.ok(ApiResponse.success("Account activated", null));
     }
 
 }
