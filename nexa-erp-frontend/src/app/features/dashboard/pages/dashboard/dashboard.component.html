@@ -1,20 +1,133 @@
 <div class="dashboard-page">
+  @if (loading()) {
+    <div class="state-box">
+      <i class="bi bi-arrow-repeat spin"></i>
+      Loading dashboard...
+    </div>
+  } @else if (summary()) {
+    <section class="welcome-card">
+      <div>
+        <h1>Welcome back 👋</h1>
+        <p>NexaERP system overview and recent activity</p>
+      </div>
 
-  <div class="dashboard-grid">
-    <div class="card stat-card">
-      <div class="stat-title">Total Revenue</div>
-      <div class="stat-value">$1,248,390</div>
-      <div class="stat-trend trend-up">+12.5% from last month</div>
-    </div>
-    <div class="card stat-card">
-      <div class="stat-title">Active Users</div>
-      <div class="stat-value">1,482</div>
-      <div class="stat-trend trend-up">+4.3% from last week</div>
-    </div>
-    <div class="card stat-card">
-      <div class="stat-title">Invoices Sent</div>
-      <div class="stat-value">489</div>
-      <div class="stat-trend trend-down">-2.1% from yesterday</div>
-    </div>
-  </div>
+      <button class="refresh-btn" type="button" (click)="loadDashboard()">
+        <i class="bi bi-arrow-clockwise"></i>
+        Refresh
+      </button>
+    </section>
+
+    <section class="stats-grid">
+      <div class="stat-card">
+        <span>Users</span>
+        <strong>{{ summary()!.users.total }}</strong>
+        <small>Active: {{ summary()!.users.active }}</small>
+      </div>
+
+      <div class="stat-card">
+        <span>Roles</span>
+        <strong>{{ summary()!.security.totalRoles }}</strong>
+        <small>{{ summary()!.security.totalPermissions }} permissions</small>
+      </div>
+
+      <div class="stat-card">
+        <span>Accounts</span>
+        <strong>{{ summary()!.finance.totalAccounts }}</strong>
+        <small>Chart of accounts</small>
+      </div>
+
+      <div class="stat-card">
+        <span>Journals</span>
+        <strong>{{ summary()!.finance.totalJournalEntries }}</strong>
+        <small>Posted: {{ summary()!.finance.postedJournalEntries }}</small>
+      </div>
+    </section>
+
+    <section class="content-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>User Status</h2>
+        </div>
+
+        <div class="mini-grid">
+          <div><span>Active</span><strong>{{ summary()!.users.active }}</strong></div>
+          <div><span>Pending</span><strong>{{ summary()!.users.pending }}</strong></div>
+          <div><span>Inactive</span><strong>{{ summary()!.users.inactive }}</strong></div>
+          <div><span>Locked</span><strong>{{ summary()!.users.locked }}</strong></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Journal Status</h2>
+        </div>
+
+        <div class="mini-grid">
+          <div><span>Posted</span><strong>{{ summary()!.finance.postedJournalEntries }}</strong></div>
+          <div><span>Draft</span><strong>{{ summary()!.finance.draftJournalEntries }}</strong></div>
+          <div><span>Reversed</span><strong>{{ summary()!.finance.reversedJournalEntries }}</strong></div>
+          <div><span>Total</span><strong>{{ summary()!.finance.totalJournalEntries }}</strong></div>
+        </div>
+      </div>
+
+      <div class="panel recent-panel">
+        <div class="panel-header">
+          <h2>Recent Activity</h2>
+        </div>
+
+        <div class="activity-list">
+          @for (activity of summary()!.recentActivities; track activity.createdAt) {
+            <div class="activity-item">
+              <div class="dot"></div>
+              <div>
+                <strong>{{ activity.description || (activity.action + ' ' + activity.entityName) }}</strong>
+                <span>{{ activity.userName }} · {{ activity.createdAt | date:'medium' }}</span>
+              </div>
+            </div>
+          } @empty {
+            <div class="state-box">No recent activity</div>
+          }
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Quick Actions</h2>
+        </div>
+
+        <div class="quick-actions">
+          <a routerLink="/users"><i class="bi bi-person-plus"></i> Users</a>
+          <a routerLink="/roles"><i class="bi bi-person-badge"></i> Roles</a>
+          <a routerLink="/accounts"><i class="bi bi-diagram-3"></i> Accounts</a>
+          <a routerLink="/journal"><i class="bi bi-journal-text"></i> Journal</a>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>System Health</h2>
+        </div>
+
+        <div class="health-list">
+          <div><span>Application</span><strong>{{ summary()!.health.application }}</strong></div>
+          <div><span>Database</span><strong>{{ summary()!.health.database }}</strong></div>
+          <div><span>Mail</span><strong>{{ summary()!.health.mail }}</strong></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>System Info</h2>
+        </div>
+
+        <div class="info-list">
+          <div><span>Version</span><strong>{{ summary()!.system.applicationVersion }}</strong></div>
+          <div><span>Environment</span><strong>{{ summary()!.system.environment }}</strong></div>
+          <div><span>Java</span><strong>{{ summary()!.system.javaVersion }}</strong></div>
+          <div><span>Timezone</span><strong>{{ summary()!.system.serverTimezone }}</strong></div>
+          <div><span>Server Time</span><strong>{{ summary()!.system.serverTime | date:'medium' }}</strong></div>
+        </div>
+      </div>
+    </section>
+  }
 </div>
