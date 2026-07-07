@@ -23,5 +23,18 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, Long> 
 
     boolean existsByAccountId(Long accountId);
 
+    List<JournalLine> findByAccountIdAndJournalEntry_StatusInAndJournalEntry_DateBetweenOrderByJournalEntry_DateAsc(
+            Long accountId,
+            List<JournalStatus> statuses,
+            LocalDate fromDate,
+            LocalDate toDate
+    );
+
+    List<JournalLine> findByAccountIdAndJournalEntry_StatusInAndJournalEntry_DateBefore(
+            Long accountId,
+            List<JournalStatus> statuses,
+            LocalDate fromDate
+    );
+
 
 }

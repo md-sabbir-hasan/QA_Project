@@ -10,6 +10,7 @@ import com.nexaerp.invoice.InvoiceRepository;
 import com.nexaerp.invoice.InvoiceStatus;
 import com.nexaerp.journal.JournalLine;
 import com.nexaerp.journal.JournalLineRepository;
+import com.nexaerp.journal.JournalStatus;
 import com.nexaerp.party.Party;
 import com.nexaerp.party.PartyRepository;
 import com.nexaerp.party.PartyType;
@@ -49,16 +50,29 @@ public class ReportServiceImpl implements ReportService{
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
+        List<JournalStatus> reportStatuses = List.of(
+                JournalStatus.POSTED,
+                JournalStatus.REVERSED
+        );
+
         // calculate opening balance from all lines BEFORE fromDate
         List<JournalLine> beforeLines =
-                journalLineRepository.findByAccountIdAndJournalEntry_DateBefore(accountId, fromDate);
+                journalLineRepository.findByAccountIdAndJournalEntry_StatusInAndJournalEntry_DateBefore(
+                        accountId,
+                        reportStatuses,
+                        fromDate
+                );
 
         BigDecimal openingBalance = calculateNetEffect(account, beforeLines);
 
         // get all lines WITHIN the date range, sorted by date
-        List<JournalLine> rangeLines = journalLineRepository
-                .findByAccountIdAndJournalEntry_DateBetweenOrderByJournalEntry_DateAsc(
-                        accountId, fromDate, toDate);
+        List<JournalLine> rangeLines =
+                journalLineRepository.findByAccountIdAndJournalEntry_StatusInAndJournalEntry_DateBetweenOrderByJournalEntry_DateAsc(
+                        accountId,
+                        reportStatuses,
+                        fromDate,
+                        toDate
+                );
 
         // walk through lines one by one, building running balance
         BigDecimal runningBalance = openingBalance;
