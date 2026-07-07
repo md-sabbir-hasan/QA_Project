@@ -12,6 +12,20 @@ export const routes: Routes = [
     canActivate: [guestGuard],
   },
   {
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('./features/auth/pages/forgot-password/forgot-password')
+        .then((m) => m.ForgotPassword),
+    canActivate: [guestGuard],
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./features/auth/pages/reset-password/reset-password')
+        .then((m) => m.ResetPassword),
+    canActivate: [guestGuard],
+  },
+  {
     path: 'set-password',
     loadComponent: () =>
       import('./features/auth/pages/set-password/set-password').then((m) => m.SetPassword),
@@ -48,6 +62,25 @@ export const routes: Routes = [
         path: 'accounts',
         loadComponent: () =>
           import('./features/accounts/pages/account-list/account-list').then((m) => m.AccountList),
+      },
+
+      {
+        path: 'journals',
+        loadComponent: () =>
+          import('./features/journal/pages/journal-list/journal-list')
+            .then(m => m.JournalList),
+      },
+      {
+        path: 'journals/new',
+        loadComponent: () =>
+          import('./features/journal/pages/journal-form/journal-form')
+            .then(m => m.JournalForm),
+      },
+      {
+        path: 'journals/:id/edit',
+        loadComponent: () =>
+          import('./features/journal/pages/journal-form/journal-form')
+            .then(m => m.JournalForm),
       },
 
       {

@@ -8,7 +8,7 @@ export const APP_ROUTES = {
   SETTINGS: '/settings',
 
   ACCOUNTS: '/accounts',
-  JOURNAL: '/journal',
+  JOURNAL: '/journals',
   INVOICE: '/invoice',
   VENDOR_BILL: '/vendor-bill',
   PAYMENT: '/payment',

@@ -273,6 +273,10 @@ public class AuthServiceImpl implements AuthService{
             throw new BusinessRuleException("Reset token has expired");
         }
 
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BusinessRuleException("Password and Confirm Password do not match");
+        }
+
         // Update password
         User user = resetToken.getUser();
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
