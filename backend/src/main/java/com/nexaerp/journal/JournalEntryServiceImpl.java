@@ -2,6 +2,8 @@ package com.nexaerp.journal;
 
 import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
+import com.nexaerp.audit.AuditAction;
+import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.journal.dto.JournalEntryRequestDto;
@@ -24,6 +26,7 @@ public class JournalEntryServiceImpl implements JournalEntryService{
     private final JournalEntryRepository journalEntryRepository;
     private final JournalLineRepository journalLineRepository;
     private final AccountRepository accountRepository;
+    private final AuditLogService auditLogService;
 
 
     @Override
@@ -56,10 +59,19 @@ public class JournalEntryServiceImpl implements JournalEntryService{
         journalLineRepository.saveAll(lines);
         saved.setLines(lines);
 
+        auditLogService.log(
+                AuditAction.CREATED,
+                "JOURNAL_ENTRY",
+                saved.getId(),
+                null,
+                saved.getEntryNumber()
+        );
+
         return toResponse(saved);
     }
 
     @Override
+    @Transactional
     public JournalEntryResponseDto update(Long id, JournalEntryRequestDto request) {
         JournalEntry entry = journalEntryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Journal entry not found"));
@@ -89,6 +101,14 @@ public class JournalEntryServiceImpl implements JournalEntryService{
                 .collect(Collectors.toList());
         journalLineRepository.saveAll(lines);
         saved.setLines(lines);
+
+        auditLogService.log(
+                AuditAction.UPDATED,
+                "JOURNAL_ENTRY",
+                saved.getId(),
+                null,
+                saved.getEntryNumber()
+        );
 
         return toResponse(saved);
     }
@@ -148,6 +168,16 @@ public class JournalEntryServiceImpl implements JournalEntryService{
         }
 
         entry.setStatus(JournalStatus.POSTED);
+        JournalEntry posted = journalEntryRepository.save(entry);
+
+        auditLogService.log(
+                AuditAction.POSTED,
+                "JOURNAL_ENTRY",
+                posted.getId(),
+                "DRAFT",
+                "POSTED"
+        );
+
         return toResponse(journalEntryRepository.save(entry));
     }
 
@@ -165,26 +195,25 @@ public class JournalEntryServiceImpl implements JournalEntryService{
             throw new BusinessRuleException("Only POSTED entries can be reversed");
         }
 
-        // Reverse entry makes
         JournalEntry reversal = new JournalEntry();
         reversal.setEntryNumber(generateEntryNumber());
         reversal.setDate(LocalDate.now());
         reversal.setDescription("Reversal of " + original.getEntryNumber());
         reversal.setType(original.getType());
-        reversal.setStatus(JournalStatus.DRAFT);
+        reversal.setStatus(JournalStatus.POSTED);
         reversal.setSourceType(JournalSourceType.MANUAL);
         reversal.setReversedFromId(original.getId());
+        reversal.setReferenceNumber("REV-" + original.getEntryNumber());
         reversal.setTotalAmount(original.getTotalAmount());
 
         JournalEntry savedReversal = journalEntryRepository.save(reversal);
 
-        // make reverse Lines
         List<JournalLine> reversalLines = original.getLines().stream()
                 .map(line -> JournalLine.builder()
                         .journalEntry(savedReversal)
                         .account(line.getAccount())
-                        .debit(line.getCredit())   // reverse
-                        .credit(line.getDebit())   // reverse
+                        .debit(line.getCredit())
+                        .credit(line.getDebit())
                         .description("Reversal: " + line.getDescription())
                         .build())
                 .collect(Collectors.toList());
@@ -192,9 +221,20 @@ public class JournalEntryServiceImpl implements JournalEntryService{
         journalLineRepository.saveAll(reversalLines);
         savedReversal.setLines(reversalLines);
 
-        // Original REVERSED mark
+        for (JournalLine line : reversalLines) {
+            updateAccountBalance(line);
+        }
+
         original.setStatus(JournalStatus.REVERSED);
         journalEntryRepository.save(original);
+
+        auditLogService.log(
+                AuditAction.REVERSED,
+                "JOURNAL_ENTRY",
+                original.getId(),
+                "POSTED",
+                "REVERSED"
+        );
 
         return toResponse(savedReversal);
     }
@@ -209,6 +249,16 @@ public class JournalEntryServiceImpl implements JournalEntryService{
         if (!entry.getStatus().equals(JournalStatus.DRAFT)) {
             throw new BusinessRuleException("Only DRAFT entries can be deleted");
         }
+
+        journalEntryRepository.delete(entry);
+
+        auditLogService.log(
+                AuditAction.DELETED,
+                "JOURNAL_ENTRY",
+                id,
+                entry.getEntryNumber(),
+                null
+        );
 
         journalEntryRepository.delete(entry);
 
@@ -286,6 +336,14 @@ public class JournalEntryServiceImpl implements JournalEntryService{
     private JournalLine buildLine(JournalLineRequestDto dto, JournalEntry entry) {
         Account account = accountRepository.findById(dto.getAccountId())
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + dto.getAccountId()));
+
+        if (!account.getIsActive()) {
+            throw new BusinessRuleException("Cannot use inactive account: " + account.getCode());
+        }
+
+        if (accountRepository.existsByParentId(account.getId())) {
+            throw new BusinessRuleException("Cannot post journal to parent account: " + account.getCode());
+        }
 
         return JournalLine.builder()
                 .journalEntry(entry)

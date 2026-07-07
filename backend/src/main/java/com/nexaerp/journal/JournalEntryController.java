@@ -55,8 +55,10 @@ public class JournalEntryController {
     @PostMapping("/{id}/reverse")
     @PreAuthorize("hasAuthority('REVERSE_JOURNAL')")
     public ResponseEntity<ApiResponse<JournalEntryResponseDto>> reverse(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success("Journal entry reversed",
-                journalEntryService.reverse(id)));
+        return ResponseEntity.ok(ApiResponse.success(
+                "Reversal journal entry created",
+                journalEntryService.reverse(id)
+        ));
     }
 
     @DeleteMapping("/{id}")
