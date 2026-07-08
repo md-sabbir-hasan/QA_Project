@@ -12,6 +12,7 @@ import com.nexaerp.invoice.InvoiceStatus;
 import com.nexaerp.journal.*;
 import com.nexaerp.party.Party;
 import com.nexaerp.party.PartyRepository;
+import com.nexaerp.party.PartyType;
 import com.nexaerp.payment.dto.PaymentAllocationRequestDto;
 import com.nexaerp.payment.dto.PaymentAllocationResponseDto;
 import com.nexaerp.payment.dto.PaymentRequestDto;
@@ -61,6 +62,9 @@ public class PaymentServiceImpl implements PaymentService {
         Account account = accountRepository.findById(request.getAccountId())
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
+        validatePartyForPayment(request.getPaymentType(), party);
+        validatePaymentAccount(account);
+
         // Build payment header
         Payment payment = new Payment();
         payment.setPaymentNumber(generatePaymentNumber());
@@ -97,6 +101,14 @@ public class PaymentServiceImpl implements PaymentService {
         savedPayment.setAllocatedAmount(totalAllocated);
         savedPayment.setUnallocatedAmount(savedPayment.getAmount().subtract(totalAllocated));
         paymentRepository.save(savedPayment);
+
+        auditLogService.log(
+                AuditAction.CREATED,
+                "PAYMENT",
+                savedPayment.getId(),
+                null,
+                savedPayment.getPaymentNumber()
+        );
 
         return toResponse(savedPayment);
     }
@@ -192,7 +204,8 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessRuleException("Payment is already cancelled");
         }
 
-        // If already posted, we must undo its effects first
+        PaymentStatus oldStatus = payment.getStatus();
+
         if (payment.getStatus().equals(PaymentStatus.POSTED)) {
             reverseJournalEntry(payment);
 
@@ -206,7 +219,17 @@ public class PaymentServiceImpl implements PaymentService {
 
         payment.setStatus(PaymentStatus.CANCELLED);
 
-        return toResponse(paymentRepository.save(payment));
+        Payment saved = paymentRepository.save(payment);
+
+        auditLogService.log(
+                AuditAction.CANCELLED,
+                "PAYMENT",
+                saved.getId(),
+                oldStatus.name(),
+                "CANCELLED"
+        );
+
+        return toResponse(saved);
     }
 
 
@@ -539,6 +562,36 @@ public class PaymentServiceImpl implements PaymentService {
                     return String.format("JE-%04d", next);
                 })
                 .orElse("JE-0001");
+    }
+
+//    validation
+
+    private void validatePartyForPayment(PaymentType paymentType, Party party) {
+        if (!party.getIsActive()) {
+            throw new BusinessRuleException("Selected party is inactive");
+        }
+
+        if (paymentType == PaymentType.RECEIPT) {
+            if (!(party.getType() == PartyType.CUSTOMER || party.getType() == PartyType.BOTH)) {
+                throw new BusinessRuleException("Receipt can only be created for Customer or Both type party");
+            }
+        }
+
+        if (paymentType == PaymentType.PAYMENT) {
+            if (!(party.getType() == PartyType.VENDOR || party.getType() == PartyType.BOTH)) {
+                throw new BusinessRuleException("Payment can only be created for Vendor or Both type party");
+            }
+        }
+    }
+
+    private void validatePaymentAccount(Account account) {
+        if (!account.getIsActive()) {
+            throw new BusinessRuleException("Selected payment account is inactive");
+        }
+
+        if (account.getCurrentBalance() == null) {
+            throw new BusinessRuleException("Selected payment account balance is invalid");
+        }
     }
 
 

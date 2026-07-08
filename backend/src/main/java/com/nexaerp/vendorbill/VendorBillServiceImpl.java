@@ -2,11 +2,14 @@ package com.nexaerp.vendorbill;
 
 import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
+import com.nexaerp.audit.AuditAction;
+import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.journal.*;
 import com.nexaerp.party.Party;
 import com.nexaerp.party.PartyRepository;
+import com.nexaerp.party.PartyType;
 import com.nexaerp.settings.SettingKey;
 import com.nexaerp.settings.SystemSettingsService;
 import com.nexaerp.vendorbill.dto.VendorBillItemRequestDto;
@@ -37,53 +40,49 @@ public class VendorBillServiceImpl implements VendorBillService {
     private final JournalEntryRepository journalEntryRepository;
     private final JournalLineRepository journalLineRepository;
     private final SystemSettingsService systemSettingsService;
+    private final AuditLogService auditLogService;
 
 
     @Override
     @Transactional
     public VendorBillResponseDto create(VendorBillRequestDto request) {
-        // Find the vendor party
         Party party = partyRepository.findById(request.getPartyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Party not found"));
 
-        // Build the vendor bill header
+        validateVendorParty(party);
+
         VendorBill bill = new VendorBill();
         bill.setBillNumber(generateBillNumber());
         bill.setBillDate(request.getBillDate());
-
-        // If posting Date not provided, use billDate
-        bill.setPostingDate(request.getPostingDate() != null
-                ? request.getPostingDate()
-                : request.getBillDate());
-
+        bill.setPostingDate(request.getPostingDate() != null ? request.getPostingDate() : request.getBillDate());
         bill.setVendorBillRef(request.getVendorBillRef());
         bill.setParty(party);
         bill.setBillType(request.getBillType());
         bill.setStatus(VendorBillStatus.DRAFT);
-        bill.setCurrencyCode(request.getCurrencyCode() != null
-                ? request.getCurrencyCode() : "BDT");
+        bill.setCurrencyCode(request.getCurrencyCode() != null ? request.getCurrencyCode() : "BDT");
         bill.setExchangeRate(BigDecimal.ONE);
-        bill.setPaymentTerms(request.getPaymentTerms() != null
-                ? request.getPaymentTerms() : party.getPaymentTerms());
-        bill.setReferenceType(request.getReferenceType() != null
-                ? request.getReferenceType() : VendorBillReferenceType.MANUAL);
+        bill.setPaymentTerms(request.getPaymentTerms() != null ? request.getPaymentTerms() : party.getPaymentTerms());
+        bill.setReferenceType(request.getReferenceType() != null ? request.getReferenceType() : VendorBillReferenceType.MANUAL);
         bill.setReferenceId(request.getReferenceId());
         bill.setNotes(request.getNotes());
-
-        // Calculate due date from bill date + payment terms
         bill.setDueDate(bill.getBillDate().plusDays(bill.getPaymentTerms()));
+
+        List<VendorBillItem> items = request.getItems().stream()
+                .map(itemDto -> buildItem(itemDto, bill))
+                .collect(Collectors.toList());
+
+        bill.setItems(items);
+        calculateTotalsOnly(bill, items);
 
         VendorBill saved = vendorBillRepository.save(bill);
 
-        // Build and save all line items
-        List<VendorBillItem> items = request.getItems().stream()
-                .map(itemDto -> buildItem(itemDto, saved))
-                .collect(Collectors.toList());
-
-        vendorBillItemRepository.saveAll(items);
-
-        // Calculate and store totals in header
-        calculateAndSaveTotals(saved, items);
+        auditLogService.log(
+                AuditAction.CREATED,
+                "VENDOR_BILL",
+                saved.getId(),
+                null,
+                saved.getBillNumber()
+        );
 
         return toResponse(saved);
     }
@@ -94,7 +93,6 @@ public class VendorBillServiceImpl implements VendorBillService {
         VendorBill bill = vendorBillRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor bill not found"));
 
-        // Only DRAFT bills can be updated
         if (!bill.getStatus().equals(VendorBillStatus.DRAFT)) {
             throw new BusinessRuleException("Only DRAFT bills can be updated");
         }
@@ -102,32 +100,41 @@ public class VendorBillServiceImpl implements VendorBillService {
         Party party = partyRepository.findById(request.getPartyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Party not found"));
 
-        // Update header fields
+        validateVendorParty(party);
+
         bill.setParty(party);
         bill.setBillDate(request.getBillDate());
-        bill.setPostingDate(request.getPostingDate() != null
-                ? request.getPostingDate() : request.getBillDate());
+        bill.setPostingDate(request.getPostingDate() != null ? request.getPostingDate() : request.getBillDate());
         bill.setVendorBillRef(request.getVendorBillRef());
         bill.setBillType(request.getBillType());
-        bill.setPaymentTerms(request.getPaymentTerms() != null
-                ? request.getPaymentTerms() : 30);
+        bill.setCurrencyCode(request.getCurrencyCode() != null ? request.getCurrencyCode() : "BDT");
+        bill.setPaymentTerms(request.getPaymentTerms() != null ? request.getPaymentTerms() : party.getPaymentTerms());
         bill.setDueDate(bill.getBillDate().plusDays(bill.getPaymentTerms()));
-        bill.setReferenceType(request.getReferenceType() != null
-                ? request.getReferenceType() : VendorBillReferenceType.MANUAL);
+        bill.setReferenceType(request.getReferenceType() != null ? request.getReferenceType() : VendorBillReferenceType.MANUAL);
         bill.setReferenceId(request.getReferenceId());
         bill.setNotes(request.getNotes());
 
-        // Delete old items and save new ones
-        vendorBillItemRepository.deleteAll(bill.getItems());
+        bill.getItems().clear();
 
         List<VendorBillItem> items = request.getItems().stream()
                 .map(itemDto -> buildItem(itemDto, bill))
                 .collect(Collectors.toList());
 
-        vendorBillItemRepository.saveAll(items);
-        calculateAndSaveTotals(bill, items);
+        bill.getItems().addAll(items);
 
-        return toResponse(vendorBillRepository.save(bill));
+        calculateTotalsOnly(bill, items);
+
+        VendorBill saved = vendorBillRepository.save(bill);
+
+        auditLogService.log(
+                AuditAction.UPDATED,
+                "VENDOR_BILL",
+                saved.getId(),
+                null,
+                saved.getBillNumber()
+        );
+
+        return toResponse(saved);
     }
 
     @Override
@@ -175,15 +182,26 @@ public class VendorBillServiceImpl implements VendorBillService {
         VendorBill bill = vendorBillRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor bill not found"));
 
-        // Only DRAFT bills can be approved
         if (!bill.getStatus().equals(VendorBillStatus.DRAFT)) {
             throw new BusinessRuleException("Only DRAFT bills can be approved");
         }
 
+        VendorBillStatus oldStatus = bill.getStatus();
+
         bill.setStatus(VendorBillStatus.APPROVED);
         bill.setApprovedAt(LocalDateTime.now());
 
-        return toResponse(vendorBillRepository.save(bill));
+        VendorBill saved = vendorBillRepository.save(bill);
+
+        auditLogService.log(
+                AuditAction.APPROVED,
+                "VENDOR_BILL",
+                saved.getId(),
+                oldStatus.name(),
+                "APPROVED"
+        );
+
+        return toResponse(saved);
     }
 
     @Override
@@ -200,27 +218,41 @@ public class VendorBillServiceImpl implements VendorBillService {
             throw new BusinessRuleException("Cannot post a cancelled vendor bill");
         }
 
-        // Only APPROVED bills can be posted
         if (!bill.getStatus().equals(VendorBillStatus.APPROVED)) {
             throw new BusinessRuleException("Only APPROVED bills can be posted");
         }
 
         List<VendorBillItem> items = vendorBillItemRepository.findByVendorBillId(bill.getId());
+
         if (items == null || items.isEmpty()) {
             throw new BusinessRuleException("Cannot post a vendor bill with zero items");
         }
 
-        if (journalEntryRepository.findBySourceTypeAndSourceId(JournalSourceType.VENDOR_BILL, bill.getId()).isPresent()) {
+        if (journalEntryRepository.findBySourceTypeAndSourceId(
+                JournalSourceType.VENDOR_BILL,
+                bill.getId()
+        ).isPresent()) {
             throw new BusinessRuleException("Journal entry already exists for this vendor bill");
         }
 
-        // Create automatic journal entry
+        VendorBillStatus oldStatus = bill.getStatus();
+
         createJournalEntry(bill);
 
         bill.setStatus(VendorBillStatus.POSTED);
         bill.setPostedAt(LocalDateTime.now());
 
-        return toResponse(vendorBillRepository.save(bill));
+        VendorBill saved = vendorBillRepository.save(bill);
+
+        auditLogService.log(
+                AuditAction.POSTED,
+                "VENDOR_BILL",
+                saved.getId(),
+                oldStatus.name(),
+                "POSTED"
+        );
+
+        return toResponse(saved);
     }
 
     @Override
@@ -233,19 +265,17 @@ public class VendorBillServiceImpl implements VendorBillService {
             throw new BusinessRuleException("Vendor bill is already cancelled");
         }
 
-        // Paid bills cannot be cancelled
-        if (bill.getStatus().equals(VendorBillStatus.PAID)) {
-            throw new BusinessRuleException("Paid bills cannot be cancelled");
+        if (bill.getPaidAmount().compareTo(BigDecimal.ZERO) > 0) {
+            throw new BusinessRuleException("Paid or partially paid vendor bills cannot be cancelled");
         }
 
-        // Reason is required
         if (reason == null) {
             throw new BusinessRuleException("Cancelled reason is required");
         }
 
-        // If already posted, reverse the journal entry
-        if (bill.getStatus().equals(VendorBillStatus.POSTED) ||
-                bill.getStatus().equals(VendorBillStatus.PARTIAL)) {
+        VendorBillStatus oldStatus = bill.getStatus();
+
+        if (bill.getStatus().equals(VendorBillStatus.POSTED)) {
             reverseJournalEntry(bill);
         }
 
@@ -253,7 +283,17 @@ public class VendorBillServiceImpl implements VendorBillService {
         bill.setCancelledReason(reason);
         bill.setDueAmount(BigDecimal.ZERO);
 
-        return toResponse(vendorBillRepository.save(bill));
+        VendorBill saved = vendorBillRepository.save(bill);
+
+        auditLogService.log(
+                AuditAction.CANCELLED,
+                "VENDOR_BILL",
+                saved.getId(),
+                oldStatus.name(),
+                "CANCELLED"
+        );
+
+        return toResponse(saved);
     }
 
 
@@ -352,15 +392,15 @@ public class VendorBillServiceImpl implements VendorBillService {
 
     private void createJournalEntry(VendorBill bill) {
 
-        // Get Accounts Payable account
         Account payable = systemSettingsService.getAccount(
                 SettingKey.DEFAULT_PAYABLE_ACCOUNT);
 
-        // Get TDS Payable account
+        Account inputVat = systemSettingsService.getAccount(
+                SettingKey.DEFAULT_INPUT_VAT);
+
         Account tdsPayable = systemSettingsService.getAccount(
                 SettingKey.DEFAULT_TDS_PAYABLE);
 
-        // Create the journal entry header
         JournalEntry entry = new JournalEntry();
         entry.setEntryNumber(generateJournalNumber());
         entry.setDate(bill.getPostingDate());
@@ -374,14 +414,10 @@ public class VendorBillServiceImpl implements VendorBillService {
 
         JournalEntry saved = journalEntryRepository.save(entry);
 
-        // Get all items to create expense lines per item
-        List<VendorBillItem> items = vendorBillItemRepository
-                .findByVendorBillId(bill.getId());
+        List<VendorBillItem> items = bill.getItems();
 
-        // Create one debit line per item for the expense account
         for (VendorBillItem item : items) {
 
-            // Debit — Expense Account (cost of this item)
             BigDecimal expenseAmount = item.getSubTotal()
                     .subtract(item.getDiscountAmount());
 
@@ -391,49 +427,65 @@ public class VendorBillServiceImpl implements VendorBillService {
             expenseLine.setDebit(expenseAmount);
             expenseLine.setCredit(BigDecimal.ZERO);
             expenseLine.setDescription(item.getDescription());
+
             journalLineRepository.save(expenseLine);
 
-            // Update expense account balance
-            updateBalance(item.getExpenseAccount(), expenseAmount, BigDecimal.ZERO);
-
-            // Debit — Input VAT (if VAT exists)
-            if (item.getVatAmount().compareTo(BigDecimal.ZERO) > 0) {
-                Account inputVat = accountRepository.findByCode("1130")
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Input VAT account not found"));
-
-                JournalLine vatLine = new JournalLine();
-                vatLine.setJournalEntry(saved);
-                vatLine.setAccount(inputVat);
-                vatLine.setDebit(item.getVatAmount());
-                vatLine.setCredit(BigDecimal.ZERO);
-                vatLine.setDescription("Input VAT - " + item.getDescription());
-                journalLineRepository.save(vatLine);
-
-                updateBalance(inputVat, item.getVatAmount(), BigDecimal.ZERO);
-            }
+            updateBalance(
+                    item.getExpenseAccount(),
+                    expenseAmount,
+                    BigDecimal.ZERO
+            );
         }
 
-        // Credit — Accounts Payable (net amount vendor will receive)
+        if (bill.getVatAmount().compareTo(BigDecimal.ZERO) > 0) {
+
+            JournalLine vatLine = new JournalLine();
+            vatLine.setJournalEntry(saved);
+            vatLine.setAccount(inputVat);
+            vatLine.setDebit(bill.getVatAmount());
+            vatLine.setCredit(BigDecimal.ZERO);
+            vatLine.setDescription("Input VAT - " + bill.getBillNumber());
+
+            journalLineRepository.save(vatLine);
+
+            updateBalance(
+                    inputVat,
+                    bill.getVatAmount(),
+                    BigDecimal.ZERO
+            );
+        }
+
         JournalLine payableLine = new JournalLine();
         payableLine.setJournalEntry(saved);
         payableLine.setAccount(payable);
         payableLine.setDebit(BigDecimal.ZERO);
         payableLine.setCredit(bill.getNetPayable());
         payableLine.setDescription("Accounts Payable - " + bill.getBillNumber());
-        journalLineRepository.save(payableLine);
-        updateBalance(payable, BigDecimal.ZERO, bill.getNetPayable());
 
-        // Credit — TDS Payable (if TDS exists)
+        journalLineRepository.save(payableLine);
+
+        updateBalance(
+                payable,
+                BigDecimal.ZERO,
+                bill.getNetPayable()
+        );
+
         if (bill.getTdsAmount().compareTo(BigDecimal.ZERO) > 0) {
+
             JournalLine tdsLine = new JournalLine();
             tdsLine.setJournalEntry(saved);
             tdsLine.setAccount(tdsPayable);
             tdsLine.setDebit(BigDecimal.ZERO);
             tdsLine.setCredit(bill.getTdsAmount());
             tdsLine.setDescription("TDS Payable - " + bill.getBillNumber());
+
             journalLineRepository.save(tdsLine);
-            updateBalance(tdsPayable, BigDecimal.ZERO, bill.getTdsAmount());
+
+            updateBalance(
+                    tdsPayable,
+                    BigDecimal.ZERO,
+                    bill.getTdsAmount()
+            );
         }
     }
 
@@ -523,6 +575,49 @@ public class VendorBillServiceImpl implements VendorBillService {
                     return String.format("JE-%04d", next);
                 })
                 .orElse("JE-0001");
+    }
+
+//    update-- Vendor validation helper add
+private void validateVendorParty(Party party) {
+    if (party.getType() == PartyType.CUSTOMER) {
+        throw new BusinessRuleException("Selected party is not a vendor");
+    }
+
+    if (!party.getIsActive()) {
+        throw new BusinessRuleException("Selected vendor is inactive");
+    }
+}
+
+//    helper add: calculateTotalsOnly
+
+    private void calculateTotalsOnly(VendorBill bill, List<VendorBillItem> items) {
+        BigDecimal subTotal = items.stream()
+                .map(VendorBillItem::getSubTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal discountAmount = items.stream()
+                .map(VendorBillItem::getDiscountAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal vatAmount = items.stream()
+                .map(VendorBillItem::getVatAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal tdsAmount = items.stream()
+                .map(VendorBillItem::getTdsAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal grandTotal = subTotal.subtract(discountAmount).add(vatAmount);
+        BigDecimal netPayable = grandTotal.subtract(tdsAmount);
+
+        bill.setSubTotal(subTotal);
+        bill.setDiscountAmount(discountAmount);
+        bill.setVatAmount(vatAmount);
+        bill.setTdsAmount(tdsAmount);
+        bill.setGrandTotal(grandTotal);
+        bill.setNetPayable(netPayable);
+        bill.setPaidAmount(BigDecimal.ZERO);
+        bill.setDueAmount(netPayable);
     }
 
 

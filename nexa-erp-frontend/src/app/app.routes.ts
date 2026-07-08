@@ -112,6 +112,31 @@ export const routes: Routes = [
       },
 
       {
+        path: 'vendor-bill',
+        loadComponent: () =>
+          import('./features/vendor-bill/pages/vendor-bill-list/vendor-bill-list')
+            .then(m => m.VendorBillList),
+      },
+      {
+        path: 'vendor-bill/new',
+        loadComponent: () =>
+          import('./features/vendor-bill/pages/vendor-bill-form/vendor-bill-form')
+            .then(m => m.VendorBillForm),
+      },
+      {
+        path: 'vendor-bill/:id',
+        loadComponent: () =>
+          import('./features/vendor-bill/pages/vendor-bill-details/vendor-bill-details')
+            .then(m => m.VendorBillDetails),
+      },
+      {
+        path: 'vendor-bill/:id/edit',
+        loadComponent: () =>
+          import('./features/vendor-bill/pages/vendor-bill-form/vendor-bill-form')
+            .then(m => m.VendorBillForm),
+      },
+
+      {
         path: '',
         pathMatch: 'full',
         redirectTo: 'dashboard',
