@@ -1,6 +1,8 @@
 package com.nexaerp.party;
 
 import com.nexaerp.common.response.ApiResponse;
+import com.nexaerp.fileupload.FileUploadService;
+import com.nexaerp.fileupload.dto.FileUploadResponseDto;
 import com.nexaerp.party.dto.PartyRequestDto;
 import com.nexaerp.party.dto.PartyResponseDto;
 import jakarta.validation.Valid;
@@ -8,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -17,6 +20,8 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:4200")
 public class PartyController {
     private final PartyService partyService;
+    private final FileUploadService fileUploadService;
+    private final PartyRepository partyRepository;
 
     @PostMapping
     @PreAuthorize("hasAuthority('CREATE_PARTY')")
@@ -50,6 +55,76 @@ public class PartyController {
     public ResponseEntity<ApiResponse<Void>> deactivate(@PathVariable Long id) {
         partyService.deactivate(id);
         return ResponseEntity.ok(ApiResponse.success("Party deactivated", null));
+    }
+
+//    for file upload
+// Document upload endpoint
+@PostMapping("/{id}/documents/trade-license")
+public ResponseEntity<ApiResponse<FileUploadResponseDto>> uploadTradeLicense(
+        @PathVariable Long id,
+        @RequestParam("file") MultipartFile file) {
+
+    FileUploadResponseDto response =
+            fileUploadService.upload(file, "PARTY", id);
+
+    // Update party with file URL
+    partyRepository.findById(id).ifPresent(party -> {
+        party.setTradeLicenseUrl(response.getFileUrl());
+        partyRepository.save(party);
+    });
+
+    return ResponseEntity.ok(ApiResponse.success(
+            "Trade license uploaded", response));
+}
+
+    @PostMapping("/{id}/documents/bin-certificate")
+    public ResponseEntity<ApiResponse<FileUploadResponseDto>> uploadBinCertificate(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+
+        FileUploadResponseDto response =
+                fileUploadService.upload(file, "PARTY", id);
+
+        partyRepository.findById(id).ifPresent(party -> {
+            party.setBinCertificateUrl(response.getFileUrl());
+            partyRepository.save(party);
+        });
+
+        return ResponseEntity.ok(ApiResponse.success(
+                "BIN certificate uploaded", response));
+    }
+
+    @PostMapping("/{id}/documents/tin-certificate")
+    public ResponseEntity<ApiResponse<FileUploadResponseDto>> uploadTinCertificate(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+
+        FileUploadResponseDto response =
+                fileUploadService.upload(file, "PARTY", id);
+
+        partyRepository.findById(id).ifPresent(party -> {
+            party.setTinCertificateUrl(response.getFileUrl());
+            partyRepository.save(party);
+        });
+
+        return ResponseEntity.ok(ApiResponse.success(
+                "TIN certificate uploaded", response));
+    }
+
+    @PostMapping("/{id}/documents/nid")
+    public ResponseEntity<ApiResponse<FileUploadResponseDto>> uploadNid(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+
+        FileUploadResponseDto response =
+                fileUploadService.upload(file, "PARTY", id);
+
+        partyRepository.findById(id).ifPresent(party -> {
+            party.setNidUrl(response.getFileUrl());
+            partyRepository.save(party);
+        });
+
+        return ResponseEntity.ok(ApiResponse.success("NID uploaded", response));
     }
 
 }

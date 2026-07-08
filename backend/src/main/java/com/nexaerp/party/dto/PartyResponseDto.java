@@ -55,4 +55,11 @@ public class PartyResponseDto {
     private String binCertificateNo;
     private String tinCertificateNo;
     private String nidNo;
+
+
+    //doc
+    private String tradeLicenseUrl;
+    private String binCertificateUrl;
+    private String tinCertificateUrl;
+    private String nidUrl;
 }

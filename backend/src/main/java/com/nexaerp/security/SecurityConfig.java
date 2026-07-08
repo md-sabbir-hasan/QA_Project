@@ -58,7 +58,8 @@ public class SecurityConfig {
                                 "/api/auth/resend-verification",
                                 "/api/auth/validate-invite",
                                 "/api/auth/set-password",
-                                "/api/auth/resend-invite"
+                                "/api/auth/resend-invite",
+                                "/api/files/**"  // ← File serve
                         ).permitAll()
 
                         // Everything requires authentication

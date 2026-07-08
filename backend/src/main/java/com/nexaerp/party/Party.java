@@ -75,4 +75,10 @@ public class Party {
     private String binCertificateNo;
     private String tinCertificateNo;
     private String nidNo;
+
+    // Document URLs (actual file paths)
+    private String tradeLicenseUrl;
+    private String binCertificateUrl;
+    private String tinCertificateUrl;
+    private String nidUrl;
 }

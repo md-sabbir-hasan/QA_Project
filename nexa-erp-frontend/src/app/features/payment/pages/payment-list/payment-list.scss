@@ -328,3 +328,20 @@ small {
     grid-template-columns: 1fr;
   }
 }
+
+.amount-text {
+  font-weight: 900;
+}
+
+.receipt-amount {
+  color: #16a34a;
+}
+
+.payment-amount {
+  color: #2563eb;
+}
+
+.unallocated-text {
+  font-weight: 900;
+  color: #f97316;
+}

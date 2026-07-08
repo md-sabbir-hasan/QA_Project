@@ -114,26 +114,51 @@ export const routes: Routes = [
       {
         path: 'vendor-bill',
         loadComponent: () =>
-          import('./features/vendor-bill/pages/vendor-bill-list/vendor-bill-list')
-            .then(m => m.VendorBillList),
+          import('./features/vendor-bill/pages/vendor-bill-list/vendor-bill-list').then(
+            (m) => m.VendorBillList,
+          ),
       },
       {
         path: 'vendor-bill/new',
         loadComponent: () =>
-          import('./features/vendor-bill/pages/vendor-bill-form/vendor-bill-form')
-            .then(m => m.VendorBillForm),
+          import('./features/vendor-bill/pages/vendor-bill-form/vendor-bill-form').then(
+            (m) => m.VendorBillForm,
+          ),
       },
       {
         path: 'vendor-bill/:id',
         loadComponent: () =>
-          import('./features/vendor-bill/pages/vendor-bill-details/vendor-bill-details')
-            .then(m => m.VendorBillDetails),
+          import('./features/vendor-bill/pages/vendor-bill-details/vendor-bill-details').then(
+            (m) => m.VendorBillDetails,
+          ),
       },
       {
         path: 'vendor-bill/:id/edit',
         loadComponent: () =>
-          import('./features/vendor-bill/pages/vendor-bill-form/vendor-bill-form')
-            .then(m => m.VendorBillForm),
+          import('./features/vendor-bill/pages/vendor-bill-form/vendor-bill-form').then(
+            (m) => m.VendorBillForm,
+          ),
+      },
+
+      // Payment
+      {
+        path: 'payment',
+        loadComponent: () =>
+          import('./features/payment/pages/payment-list/payment-list').then((m) => m.PaymentList),
+      },
+
+      {
+        path: 'payment/new',
+        loadComponent: () =>
+          import('./features/payment/pages/payment-form/payment-form').then((m) => m.PaymentForm),
+      },
+
+      {
+        path: 'payment/:id',
+        loadComponent: () =>
+          import('./features/payment/pages/payment-details/payment-details').then(
+            (m) => m.PaymentDetails,
+          ),
       },
 
       {

@@ -278,6 +278,10 @@ public class partyServiceImpl implements PartyService{
                 .binCertificateNo(party.getBinCertificateNo())
                 .tinCertificateNo(party.getTinCertificateNo())
                 .nidNo(party.getNidNo())
+                .tradeLicenseUrl(party.getTradeLicenseUrl())
+                .binCertificateUrl(party.getBinCertificateUrl())
+                .tinCertificateUrl(party.getTinCertificateUrl())
+                .nidUrl(party.getNidUrl())
                 .build();
     }
 
