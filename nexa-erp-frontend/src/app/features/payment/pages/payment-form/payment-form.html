@@ -1,1 +1,144 @@
-<p>payment-form works!</p>
+<div class="payment-form-page">
+  <section class="payment-hero">
+    <div>
+      <span class="eyebrow">Finance Payment</span>
+      <h1>{{ getPaymentTitle() }}</h1>
+      <p>Create customer receipts or vendor payments with FIFO auto allocation.</p>
+    </div>
+
+    <a routerLink="/payment" class="back-btn">
+      <i class="bi bi-arrow-left"></i>
+      Back to Payments
+    </a>
+  </section>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="payment-card">
+    <section class="form-section">
+      <div class="section-title">
+        <div>
+          <h2>Payment Information</h2>
+          <p>Select party, payment account, method and amount.</p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Payment Type</label>
+          <select formControlName="paymentType">
+            @for (type of paymentTypes; track type) {
+              <option [value]="type">
+                {{ type === 'RECEIPT' ? 'Customer Receipt' : 'Vendor Payment' }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>{{ getPartyLabel() }}</label>
+          <select formControlName="partyId" (change)="onPartyChange()">
+            <option [ngValue]="null">Select {{ getPartyLabel() }}</option>
+            @for (party of parties(); track party.id) {
+              <option [ngValue]="party.id">
+                {{ party.code }} - {{ party.name }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Payment Account</label>
+          <select formControlName="accountId">
+            <option [ngValue]="null">Select account</option>
+            @for (account of accounts(); track account.id) {
+              <option [ngValue]="account.id">
+                {{ account.code }} - {{ account.name }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Payment Date</label>
+          <input type="date" formControlName="paymentDate" />
+        </div>
+
+        <div class="form-group">
+          <label>Amount</label>
+          <input type="number" min="0.01" step="0.01" formControlName="amount" />
+        </div>
+
+        <div class="form-group">
+          <label>Currency</label>
+          <input type="text" formControlName="currencyCode" />
+        </div>
+
+        <div class="form-group">
+          <label>Payment Method</label>
+          <select formControlName="paymentMethod">
+            @for (method of paymentMethods; track method) {
+              <option [value]="method">{{ getMethodLabel(method) }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Transaction Reference</label>
+          <input type="text" formControlName="transactionRef" placeholder="Cheque no, bKash trx id, bank ref..." />
+        </div>
+
+        <div class="form-group full">
+          <label>Notes</label>
+          <textarea formControlName="notes" rows="3" placeholder="Optional notes"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="allocation-section">
+      <div class="allocation-box">
+        <div>
+          <h3>Auto Allocation</h3>
+          <p>
+            System will allocate this payment using FIFO against oldest due
+            {{ form.get('paymentType')?.value === 'RECEIPT' ? 'invoices' : 'vendor bills' }}.
+          </p>
+        </div>
+
+        <label class="switch-row">
+          <input type="checkbox" formControlName="autoAllocate" />
+          <span>Auto Allocate</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="summary-section">
+      <div class="summary-card">
+        <span>Payment Amount</span>
+        <strong>{{ form.get('amount')?.value || 0 | number:'1.2-2' }}</strong>
+        <small>{{ form.get('currencyCode')?.value }}</small>
+      </div>
+
+      <div class="hint-card">
+        <i class="bi bi-info-circle"></i>
+        <div>
+          <strong>Accounting Effect</strong>
+          <span>
+            @if (form.get('paymentType')?.value === 'RECEIPT') {
+              Dr Cash/Bank, Cr Accounts Receivable
+            } @else {
+              Dr Accounts Payable, Cr Cash/Bank
+            }
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <div class="form-actions">
+      <a routerLink="/payment" class="cancel-btn">Cancel</a>
+
+      <button class="save-btn" type="submit" [disabled]="submitting()">
+        <i class="bi bi-save"></i>
+        {{ submitting() ? 'Saving...' : 'Save Draft' }}
+      </button>
+    </div>
+  </form>
+</div>
