@@ -14,15 +14,13 @@ export const routes: Routes = [
   {
     path: 'forgot-password',
     loadComponent: () =>
-      import('./features/auth/pages/forgot-password/forgot-password')
-        .then((m) => m.ForgotPassword),
+      import('./features/auth/pages/forgot-password/forgot-password').then((m) => m.ForgotPassword),
     canActivate: [guestGuard],
   },
   {
     path: 'reset-password',
     loadComponent: () =>
-      import('./features/auth/pages/reset-password/reset-password')
-        .then((m) => m.ResetPassword),
+      import('./features/auth/pages/reset-password/reset-password').then((m) => m.ResetPassword),
     canActivate: [guestGuard],
   },
   {
@@ -67,20 +65,50 @@ export const routes: Routes = [
       {
         path: 'journals',
         loadComponent: () =>
-          import('./features/journal/pages/journal-list/journal-list')
-            .then(m => m.JournalList),
+          import('./features/journal/pages/journal-list/journal-list').then((m) => m.JournalList),
       },
       {
         path: 'journals/new',
         loadComponent: () =>
-          import('./features/journal/pages/journal-form/journal-form')
-            .then(m => m.JournalForm),
+          import('./features/journal/pages/journal-form/journal-form').then((m) => m.JournalForm),
       },
       {
         path: 'journals/:id/edit',
         loadComponent: () =>
-          import('./features/journal/pages/journal-form/journal-form')
-            .then(m => m.JournalForm),
+          import('./features/journal/pages/journal-form/journal-form').then((m) => m.JournalForm),
+      },
+      {
+        path: 'reports/ledger',
+        loadComponent: () => import('./features/reports/pages/ledger/ledger').then((m) => m.Ledger),
+      },
+      {
+        path: 'reports/trial-balance',
+        loadComponent: () =>
+          import('./features/reports/pages/trial-balance/trial-balance').then(
+            (m) => m.TrialBalance,
+          ),
+      },
+      {
+        path: 'invoice',
+        loadComponent: () =>
+          import('./features/invoice/pages/invoice-list/invoice-list').then((m) => m.InvoiceList),
+      },
+      {
+        path: 'invoice/new',
+        loadComponent: () =>
+          import('./features/invoice/pages/invoice-form/invoice-form').then((m) => m.InvoiceForm),
+      },
+      {
+        path: 'invoice/:id/edit',
+        loadComponent: () =>
+          import('./features/invoice/pages/invoice-form/invoice-form').then((m) => m.InvoiceForm),
+      },
+      {
+        path: 'invoice/:id',
+        loadComponent: () =>
+          import('./features/invoice/pages/invoice-details/invoice-details').then(
+            (m) => m.InvoiceDetails,
+          ),
       },
 
       {

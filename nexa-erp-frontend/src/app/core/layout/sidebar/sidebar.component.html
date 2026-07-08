@@ -1,61 +1,66 @@
 <aside class="erp-sidebar" [class.collapsed]="collapsed">
-
-  <div class="logo">
-    <i class="bi bi-building"></i>
+  <div class="brand">
+    <div class="brand-mark">
+      <i class="bi bi-hexagon-fill"></i>
+      <span>N</span>
+    </div>
 
     @if (!collapsed) {
-      <span>NexaERP</span>
+      <div class="brand-text">
+        <strong>NexaERP</strong>
+        <small>Enterprise Suite</small>
+      </div>
     }
   </div>
 
-  <nav>
-
+  <nav class="menu">
     @for (item of menu; track item.label) {
-
       @if (item.children?.length) {
-
         <div class="menu-group">
-
           @if (!collapsed) {
-            <h6>{{ item.label }}</h6>
+            <div class="group-title">{{ item.label }}</div>
           }
 
           @for (child of item.children; track child.label) {
-
             <a
               [routerLink]="child.route"
-              routerLinkActive="active">
-
-              <i class="bi" [class]="child.icon"></i>
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: true }"
+              [title]="collapsed ? child.label : ''"
+            >
+              <span class="menu-icon">
+                <i class="bi" [class]="child.icon"></i>
+              </span>
 
               @if (!collapsed) {
-                <span>{{ child.label }}</span>
+                <span class="menu-label">{{ child.label }}</span>
               }
-
             </a>
-
           }
-
         </div>
-
       } @else {
-
         <a
           [routerLink]="item.route"
-          routerLinkActive="active">
-
-          <i class="bi" [class]="item.icon"></i>
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          [title]="collapsed ? item.label : ''"
+        >
+          <span class="menu-icon">
+            <i class="bi" [class]="item.icon"></i>
+          </span>
 
           @if (!collapsed) {
-            <span>{{ item.label }}</span>
+            <span class="menu-label">{{ item.label }}</span>
           }
-
         </a>
-
       }
-
     }
-
   </nav>
 
+  @if (!collapsed) {
+    <div class="sidebar-footer">
+      <span>Finance Workspace</span>
+      <strong>v1.0</strong>
+    </div>
+  }
 </aside>

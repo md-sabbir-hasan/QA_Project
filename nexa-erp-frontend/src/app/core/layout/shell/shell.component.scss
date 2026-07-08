@@ -1,19 +1,21 @@
 .erp-shell {
   min-height: 100vh;
   display: flex;
-  background: #f8fafc;
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 32%),
+    #f8fafc;
 }
 
 .erp-main {
   flex: 1;
   min-width: 0;
-  margin-left: 260px;
-  transition: margin-left 0.2s ease;
+  margin-left: 270px;
+  transition: margin-left 0.22s ease;
 }
 
 .erp-shell.sidebar-collapsed {
   .erp-main {
-    margin-left: 78px;
+    margin-left: 82px;
   }
 }
 
@@ -24,7 +26,7 @@
 
 @media (max-width: 992px) {
   .erp-main {
-    margin-left: 78px;
+    margin-left: 82px;
   }
 
   .erp-content {

@@ -1,22 +1,40 @@
 <header class="erp-header">
   <div class="header-left">
-    <button class="icon-btn" type="button" (click)="toggleSidebar.emit()">
+    <button class="menu-btn" type="button" (click)="toggleSidebar.emit()">
       <i class="bi bi-list"></i>
     </button>
 
-    <div>
+    <div class="title-block">
+      <span class="page-kicker">Workspace</span>
       <h2>Dashboard</h2>
-      <span>Welcome to NexaERP</span>
+      <p>Welcome back to NexaERP</p>
     </div>
   </div>
 
+  <div class="header-center">
+    <i class="bi bi-search"></i>
+    <input type="text" placeholder="Search modules, reports..." disabled />
+  </div>
+
   <div class="header-right">
-    <button class="icon-btn" type="button">
+    <button class="header-icon" type="button">
       <i class="bi bi-bell"></i>
+      <span class="notify-dot"></span>
     </button>
 
-    <button class="user-btn" type="button" (click)="logout()">
-      <i class="bi bi-person-circle"></i>
+    <div class="profile-chip">
+      <div class="avatar">
+        <i class="bi bi-person"></i>
+      </div>
+
+      <div class="profile-text">
+        <strong>Admin</strong>
+        <span>Super Admin</span>
+      </div>
+    </div>
+
+    <button class="logout-btn" type="button" (click)="logout()">
+      <i class="bi bi-box-arrow-right"></i>
       <span>Logout</span>
     </button>
   </div>

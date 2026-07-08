@@ -104,20 +104,32 @@ public class InvoiceServiceImpl implements InvoiceService{
         invoice.setInvoiceDate(request.getInvoiceDate());
         invoice.setPaymentTerms(request.getPaymentTerms() != null ? request.getPaymentTerms() : 30);
         invoice.setDueDate(request.getInvoiceDate().plusDays(invoice.getPaymentTerms()));
+        invoice.setCurrencyCode(request.getCurrencyCode() != null ? request.getCurrencyCode() : "BDT");
         invoice.setReference(request.getReference());
         invoice.setNotes(request.getNotes());
 
-        // Remove old item with Replace in new item
-        invoiceItemRepository.deleteAll(invoice.getItems());
+        // Important: orphanRemoval-safe replace
+        invoice.getItems().clear();
 
-        List<InvoiceItem> items = request.getItems().stream()
+        List<InvoiceItem> newItems = request.getItems().stream()
                 .map(itemDto -> buildItem(itemDto, invoice))
                 .collect(Collectors.toList());
 
-        invoiceItemRepository.saveAll(items);
-        calculateAndSaveTotals(invoice, items);
+        invoice.getItems().addAll(newItems);
 
-        return toResponse(invoiceRepository.save(invoice));
+        calculateTotalsOnly(invoice, newItems);
+
+        Invoice saved = invoiceRepository.save(invoice);
+
+        auditLogService.log(
+                AuditAction.UPDATED,
+                "INVOICE",
+                saved.getId(),
+                null,
+                saved.getInvoiceNumber()
+        );
+
+        return toResponse(saved);
     }
 
     @Override
@@ -205,17 +217,17 @@ public class InvoiceServiceImpl implements InvoiceService{
             throw new BusinessRuleException("Invoice is already cancelled");
         }
 
-        if (invoice.getStatus().equals(InvoiceStatus.PAID)) {
-            throw new BusinessRuleException("Paid invoices cannot be cancelled");
+        if (invoice.getPaidAmount().compareTo(BigDecimal.ZERO) > 0) {
+            throw new BusinessRuleException("Paid or partially paid invoices cannot be cancelled");
         }
 
         if (reason == null) {
             throw new BusinessRuleException("Cancelled reason is required");
         }
 
-        //If POSTED Reverse Journal Entry
-        if (invoice.getStatus().equals(InvoiceStatus.POSTED) ||
-                invoice.getStatus().equals(InvoiceStatus.PARTIAL)) {
+        InvoiceStatus oldStatus = invoice.getStatus();
+
+        if (invoice.getStatus().equals(InvoiceStatus.POSTED)) {
             reverseJournalEntry(invoice);
         }
 
@@ -223,14 +235,17 @@ public class InvoiceServiceImpl implements InvoiceService{
         invoice.setCancelledReason(reason);
         invoice.setDueAmount(BigDecimal.ZERO);
 
+        Invoice saved = invoiceRepository.save(invoice);
+
         auditLogService.log(
                 AuditAction.CANCELLED,
                 "INVOICE",
-                invoice.getId(),
-                invoice.getStatus().name(),
-                "CANCELLED");
+                saved.getId(),
+                oldStatus.name(),
+                "CANCELLED"
+        );
 
-        return toResponse(invoiceRepository.save(invoice));
+        return toResponse(saved);
     }
 
 
@@ -450,6 +465,31 @@ public class InvoiceServiceImpl implements InvoiceService{
                     return String.format("JE-%04d", next);
                 })
                 .orElse("JE-0001");
+    }
+
+
+    private void calculateTotalsOnly(Invoice invoice, List<InvoiceItem> items) {
+
+        BigDecimal subTotal = items.stream()
+                .map(InvoiceItem::getSubTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal discountAmount = items.stream()
+                .map(InvoiceItem::getDiscountAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal vatAmount = items.stream()
+                .map(InvoiceItem::getVatAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal grandTotal = subTotal.subtract(discountAmount).add(vatAmount);
+
+        invoice.setSubTotal(subTotal);
+        invoice.setDiscountAmount(discountAmount);
+        invoice.setVatAmount(vatAmount);
+        invoice.setGrandTotal(grandTotal);
+        invoice.setPaidAmount(BigDecimal.ZERO);
+        invoice.setDueAmount(grandTotal);
     }
 
 

@@ -187,6 +187,12 @@ public class JournalEntryServiceImpl implements JournalEntryService{
         JournalEntry original = journalEntryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Journal entry not found"));
 
+        if (original.getSourceType() != JournalSourceType.MANUAL) {
+            throw new BusinessRuleException(
+                    "Only manual journal entries can be reversed from Journal Register. Please reverse the source document instead."
+            );
+        }
+
         if (original.getStatus() == JournalStatus.REVERSED) {
             throw new BusinessRuleException("Journal entry is already reversed");
         }
