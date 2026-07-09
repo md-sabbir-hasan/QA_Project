@@ -9,12 +9,37 @@ import { Party, PartyType } from '../models/party.model';
 export interface PartyRequest {
   name: string;
   type: PartyType;
+  notes?: string | null;
+
+  companyName?: string | null;
+  contactPerson?: string | null;
+  jobPosition?: string | null;
+
   email?: string | null;
   phone: string;
-  address?: string | null;
-  paymentTerms: number;
-  currency: string;
-  openingBalance: number;
+  mobile?: string | null;
+
+  street?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+
+  creditLimit?: number;
+  paymentTerms?: number;
+  openingBalance?: number;
+  currency?: string;
+  bankAccountNo?: string | null;
+  bankName?: string | null;
+
+  bin?: string | null;
+  tin?: string | null;
+  vatRegistered?: boolean;
+
+  tradeLicenseNo?: string | null;
+  tradeLicenseExpiry?: string | null;
+  binCertificateNo?: string | null;
+  tinCertificateNo?: string | null;
+  nidNo?: string | null;
 }
 
 export interface FileUploadResponse {
@@ -56,8 +81,12 @@ export class PartyService {
   }
 
   deactivate(id: number): Observable<ApiResponse<void>> {
-  return this.http.patch<ApiResponse<void>>(`${this.baseUrl}/${id}/deactivate`, {});
-}
+    return this.http.patch<ApiResponse<void>>(
+      `${this.baseUrl}/${id}/deactivate`,
+      {},
+    );
+  }
+
   uploadTradeLicense(id: number, file: File): Observable<ApiResponse<FileUploadResponse>> {
     return this.uploadDocument(id, file, 'trade-license');
   }

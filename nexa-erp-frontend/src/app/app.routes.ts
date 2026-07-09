@@ -162,6 +162,35 @@ export const routes: Routes = [
       },
 
       {
+        path: 'party',
+        loadComponent: () =>
+          import('./features/party/pages/party-list/party-list').then(
+            (m) => m.PartyList,
+          ),
+      },
+      {
+        path: 'party/new',
+        loadComponent: () =>
+          import('./features/party/pages/party-form/party-form').then(
+            (m) => m.PartyForm,
+          ),
+      },
+      {
+        path: 'party/:id',
+        loadComponent: () =>
+          import('./features/party/pages/party-details/party-details').then(
+            (m) => m.PartyDetails,
+          ),
+      },
+      {
+        path: 'party/:id/edit',
+        loadComponent: () =>
+          import('./features/party/pages/party-form/party-form').then(
+            (m) => m.PartyForm,
+          ),
+      },
+
+      {
         path: '',
         pathMatch: 'full',
         redirectTo: 'dashboard',
