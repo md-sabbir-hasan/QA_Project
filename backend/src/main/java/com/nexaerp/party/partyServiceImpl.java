@@ -2,6 +2,8 @@ package com.nexaerp.party;
 
 import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
+import com.nexaerp.audit.AuditAction;
+import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.journal.*;
@@ -27,15 +29,16 @@ public class partyServiceImpl implements PartyService{
     private final JournalLineRepository journalLineRepository;
     private final AccountRepository accountRepository;
     private final SystemSettingsService systemSettingsService;
+    private final AuditLogService auditLogService;
 
 
     @Override
     @Transactional
     public PartyResponseDto create(PartyRequestDto request) {
-        // Phone unique check
-        if (partyRepository.existsByPhone(request.getPhone())){
+        if (partyRepository.existsByPhone(request.getPhone())) {
             throw new BusinessRuleException("Phone already exists: " + request.getPhone());
         }
+
         Party party = new Party();
 
         mapRequestToParty(request, party);
@@ -44,11 +47,18 @@ public class partyServiceImpl implements PartyService{
 
         Party saved = partyRepository.save(party);
 
-        // To create a Journal Entry for a Opening Balance in accounting
         if (request.getOpeningBalance() != null
                 && request.getOpeningBalance().compareTo(BigDecimal.ZERO) != 0) {
             createOpeningBalanceEntry(saved);
         }
+
+        auditLogService.log(
+                AuditAction.CREATED,
+                "PARTY",
+                saved.getId(),
+                null,
+                "Party created: " + saved.getCode() + " - " + saved.getName()
+        );
 
         return toResponse(saved);
     }
@@ -59,9 +69,21 @@ public class partyServiceImpl implements PartyService{
         Party party = partyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Party not found"));
 
+        String oldValue = "Party before update: " + party.getCode() + " - " + party.getName();
+
         mapRequestToParty(request, party);
 
-        return toResponse(partyRepository.save(party));
+        Party saved = partyRepository.save(party);
+
+        auditLogService.log(
+                AuditAction.UPDATED,
+                "PARTY",
+                saved.getId(),
+                oldValue,
+                "Party updated: " + saved.getCode() + " - " + saved.getName()
+        );
+
+        return toResponse(saved);
     }
 
     @Override
@@ -89,12 +111,26 @@ public class partyServiceImpl implements PartyService{
     }
 
     @Override
+    @Transactional
     public void deactivate(Long id) {
         Party party = partyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Party not found"));
-        party.setIsActive(false);
-        partyRepository.save(party);
 
+        if (Boolean.FALSE.equals(party.getIsActive())) {
+            throw new BusinessRuleException("Party is already inactive");
+        }
+
+        party.setIsActive(false);
+
+        Party saved = partyRepository.save(party);
+
+        auditLogService.log(
+                AuditAction.DEACTIVATED,
+                "PARTY",
+                saved.getId(),
+                "ACTIVE",
+                "INACTIVE"
+        );
     }
 
 

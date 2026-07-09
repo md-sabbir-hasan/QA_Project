@@ -1,4 +1,6 @@
-export type PaymentType = 'RECEIPT' | 'PAYMENT';
+export type PaymentType =
+  | 'RECEIPT'
+  | 'PAYMENT';
 
 export type PaymentStatus =
   | 'DRAFT'
@@ -18,7 +20,13 @@ export type PaymentReferenceType =
   | 'INVOICE'
   | 'VENDOR_BILL';
 
-export interface PaymentAllocation {
+export interface PaymentAllocationRequest {
+  referenceType: PaymentReferenceType;
+  referenceId: number;
+  allocatedAmount: number;
+}
+
+export interface PaymentAllocationResponse {
   id: number;
   referenceType: PaymentReferenceType;
   referenceId: number;
@@ -26,10 +34,35 @@ export interface PaymentAllocation {
   createdAt: string;
 }
 
-export interface Payment {
-  id: number;
-  paymentNumber: string;
+export interface PaymentRequest {
+  partyId: number;
+  accountId: number;
   paymentDate: string;
+
+  paymentType: PaymentType;
+
+  amount: number;
+
+  currencyCode: string;
+
+  paymentMethod: PaymentMethod;
+
+  transactionRef?: string;
+
+  notes?: string;
+
+  autoAllocate: boolean;
+
+  allocations: PaymentAllocationRequest[];
+}
+
+export interface PaymentResponse {
+  id: number;
+
+  paymentNumber: string;
+
+  paymentDate: string;
+
   paymentType: PaymentType;
 
   partyId: number;
@@ -39,41 +72,28 @@ export interface Payment {
   accountName: string;
 
   amount: number;
+
   allocatedAmount: number;
+
   unallocatedAmount: number;
 
   currencyCode: string;
+
   exchangeRate: number;
 
   paymentMethod: PaymentMethod;
-  transactionRef: string | null;
-  notes: string | null;
+
+  transactionRef: string;
+
+  notes: string;
 
   status: PaymentStatus;
 
   postedAt: string | null;
+
   createdAt: string;
+
   updatedAt: string;
 
-  allocations: PaymentAllocation[];
-}
-
-export interface PaymentAllocationRequest {
-  referenceType: PaymentReferenceType;
-  referenceId: number;
-  allocatedAmount: number;
-}
-
-export interface PaymentRequest {
-  partyId: number | null;
-  accountId: number | null;
-  paymentDate: string;
-  paymentType: PaymentType;
-  amount: number;
-  currencyCode: string;
-  paymentMethod: PaymentMethod;
-  transactionRef: string;
-  notes: string;
-  autoAllocate: boolean;
-  allocations: PaymentAllocationRequest[];
+  allocations: PaymentAllocationResponse[];
 }

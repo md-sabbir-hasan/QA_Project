@@ -26,9 +26,9 @@
           <label>Payment Type</label>
           <select formControlName="paymentType">
             @for (type of paymentTypes; track type) {
-              <option [value]="type">
-                {{ type === 'RECEIPT' ? 'Customer Receipt' : 'Vendor Payment' }}
-              </option>
+            <option [value]="type">
+              {{ type === 'RECEIPT' ? 'Customer Receipt' : 'Vendor Payment' }}
+            </option>
             }
           </select>
         </div>
@@ -38,9 +38,9 @@
           <select formControlName="partyId" (change)="onPartyChange()">
             <option [ngValue]="null">Select {{ getPartyLabel() }}</option>
             @for (party of parties(); track party.id) {
-              <option [ngValue]="party.id">
-                {{ party.code }} - {{ party.name }}
-              </option>
+            <option [ngValue]="party.id">
+              {{ party.code }} - {{ party.name }}
+            </option>
             }
           </select>
         </div>
@@ -50,9 +50,9 @@
           <select formControlName="accountId">
             <option [ngValue]="null">Select account</option>
             @for (account of accounts(); track account.id) {
-              <option [ngValue]="account.id">
-                {{ account.code }} - {{ account.name }}
-              </option>
+            <option [ngValue]="account.id">
+              {{ account.code }} - {{ account.name }}
+            </option>
             }
           </select>
         </div>
@@ -65,6 +65,9 @@
         <div class="form-group">
           <label>Amount</label>
           <input type="number" min="0.01" step="0.01" formControlName="amount" />
+          @if (form.get('partyId')?.touched && form.get('partyId')?.invalid) {
+          <small class="error-text">Party is required</small>
+          }
         </div>
 
         <div class="form-group">
@@ -76,7 +79,7 @@
           <label>Payment Method</label>
           <select formControlName="paymentMethod">
             @for (method of paymentMethods; track method) {
-              <option [value]="method">{{ getMethodLabel(method) }}</option>
+            <option [value]="method">{{ getMethodLabel(method) }}</option>
             }
           </select>
         </div>
@@ -84,6 +87,9 @@
         <div class="form-group">
           <label>Transaction Reference</label>
           <input type="text" formControlName="transactionRef" placeholder="Cheque no, bKash trx id, bank ref..." />
+          @if (form.get('partyId')?.touched && form.get('partyId')?.invalid) {
+          <small class="error-text">Party is required</small>
+          }
         </div>
 
         <div class="form-group full">
@@ -94,20 +100,220 @@
     </section>
 
     <section class="allocation-section">
+
       <div class="allocation-box">
+
         <div>
-          <h3>Auto Allocation</h3>
+          <h3>Allocation</h3>
+
           <p>
-            System will allocate this payment using FIFO against oldest due
-            {{ form.get('paymentType')?.value === 'RECEIPT' ? 'invoices' : 'vendor bills' }}.
+            @if (form.get('autoAllocate')?.value) {
+            System will automatically allocate this payment using FIFO.
+            } @else {
+            Allocate the payment manually.
+            }
           </p>
         </div>
 
         <label class="switch-row">
-          <input type="checkbox" formControlName="autoAllocate" />
+          <input type="checkbox" formControlName="autoAllocate">
+
           <span>Auto Allocate</span>
         </label>
+
       </div>
+
+      @if (!form.get('autoAllocate')?.value) {
+
+      <div class="manual-allocation">
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>Reference</th>
+
+              <th class="text-end">
+                Due Amount
+              </th>
+
+              <th width="220">
+                Allocate
+              </th>
+
+              <th class="text-end">
+                Remaining
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody formArrayName="allocations">
+
+            @if (form.get('paymentType')?.value === 'RECEIPT') {
+
+            @for (group of allocations.controls; track $index) {
+
+            <tr [formGroupName]="$index">
+
+              <td>
+
+                <strong>
+
+                  {{ getInvoiceById(group.get('referenceId')?.value)?.invoiceNumber }}
+
+                </strong>
+
+              </td>
+
+              <td class="text-end">
+
+                {{
+                getInvoiceById(group.get('referenceId')?.value)?.dueAmount
+                | number:'1.2-2'
+                }}
+
+              </td>
+
+              <td>
+
+                <input type="number" min="0" step="0.01" formControlName="allocatedAmount"
+                  [class.invalid-input]="isAllocationInvalid($index)" />
+
+                @if (isAllocationInvalid($index)) {
+                <small class="error-text">
+                  Cannot exceed due amount
+                </small>
+                }
+
+              </td>
+
+              <td class="text-end">
+
+                {{
+
+                remainingDue(
+
+                getInvoiceById(group.get('referenceId')?.value)?.dueAmount ?? 0,
+
+                group.get('allocatedAmount')?.value
+
+                )
+
+                | number:'1.2-2'
+
+                }}
+
+              </td>
+
+            </tr>
+
+            }
+
+            } @else {
+
+            @for (group of allocations.controls; track $index) {
+
+            <tr [formGroupName]="$index">
+
+              <td>
+
+                <strong>
+
+                  {{ getBillById(group.get('referenceId')?.value)?.billNumber }}
+
+                </strong>
+
+              </td>
+
+              <td class="text-end">
+
+                {{
+
+                getBillById(group.get('referenceId')?.value)?.dueAmount
+
+                | number:'1.2-2'
+
+                }}
+
+              </td>
+
+              <td>
+
+                <input type="number" min="0" step="0.01" formControlName="allocatedAmount"
+                  [class.invalid-input]="isAllocationInvalid($index)" />
+
+                @if (isAllocationInvalid($index)) {
+                <small class="error-text">
+                  Cannot exceed due amount
+                </small>
+                }
+
+              </td>
+
+              <td class="text-end">
+
+                {{
+
+                remainingDue(
+
+                getBillById(group.get('referenceId')?.value)?.dueAmount ?? 0,
+
+                group.get('allocatedAmount')?.value
+
+                )
+
+                | number:'1.2-2'
+
+                }}
+
+              </td>
+
+            </tr>
+
+            }
+
+            }
+
+          </tbody>
+
+        </table>
+
+        <div class="allocation-summary">
+
+          <div>
+
+            <span>Total Allocated</span>
+
+            <strong>
+
+              {{ allocationTotal() | number:'1.2-2' }}
+
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>Remaining</span>
+
+            <strong>
+
+              {{ unallocatedAmount() | number:'1.2-2' }}
+
+            </strong>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      }
+
     </section>
 
     <section class="summary-section">
@@ -123,9 +329,9 @@
           <strong>Accounting Effect</strong>
           <span>
             @if (form.get('paymentType')?.value === 'RECEIPT') {
-              Dr Cash/Bank, Cr Accounts Receivable
+            Dr Cash/Bank, Cr Accounts Receivable
             } @else {
-              Dr Accounts Payable, Cr Cash/Bank
+            Dr Accounts Payable, Cr Cash/Bank
             }
           </span>
         </div>
@@ -135,7 +341,7 @@
     <div class="form-actions">
       <a routerLink="/payment" class="cancel-btn">Cancel</a>
 
-      <button class="save-btn" type="submit" [disabled]="submitting()">
+      <button class="save-btn" type="submit" [disabled]="submitting() || hasInvalidAllocation()">
         <i class="bi bi-save"></i>
         {{ submitting() ? 'Saving...' : 'Save Draft' }}
       </button>

@@ -6,6 +6,27 @@ import { APP_CONFIG } from '../../../core/config/app.config';
 import { ApiResponse } from '../../../core/models/api-response.model';
 import { Party, PartyType } from '../models/party.model';
 
+export interface PartyRequest {
+  name: string;
+  type: PartyType;
+  email?: string | null;
+  phone: string;
+  address?: string | null;
+  paymentTerms: number;
+  currency: string;
+  openingBalance: number;
+}
+
+export interface FileUploadResponse {
+  fileName: string;
+  originalName: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number;
+  entityType: string;
+  entityId: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -18,7 +39,52 @@ export class PartyService {
     return this.http.get<ApiResponse<Party[]>>(this.baseUrl);
   }
 
+  getById(id: number): Observable<ApiResponse<Party>> {
+    return this.http.get<ApiResponse<Party>>(`${this.baseUrl}/${id}`);
+  }
+
   getByType(type: PartyType): Observable<ApiResponse<Party[]>> {
     return this.http.get<ApiResponse<Party[]>>(`${this.baseUrl}/type/${type}`);
+  }
+
+  create(request: PartyRequest): Observable<ApiResponse<Party>> {
+    return this.http.post<ApiResponse<Party>>(this.baseUrl, request);
+  }
+
+  update(id: number, request: PartyRequest): Observable<ApiResponse<Party>> {
+    return this.http.put<ApiResponse<Party>>(`${this.baseUrl}/${id}`, request);
+  }
+
+  deactivate(id: number): Observable<ApiResponse<void>> {
+  return this.http.patch<ApiResponse<void>>(`${this.baseUrl}/${id}/deactivate`, {});
+}
+  uploadTradeLicense(id: number, file: File): Observable<ApiResponse<FileUploadResponse>> {
+    return this.uploadDocument(id, file, 'trade-license');
+  }
+
+  uploadBinCertificate(id: number, file: File): Observable<ApiResponse<FileUploadResponse>> {
+    return this.uploadDocument(id, file, 'bin-certificate');
+  }
+
+  uploadTinCertificate(id: number, file: File): Observable<ApiResponse<FileUploadResponse>> {
+    return this.uploadDocument(id, file, 'tin-certificate');
+  }
+
+  uploadNid(id: number, file: File): Observable<ApiResponse<FileUploadResponse>> {
+    return this.uploadDocument(id, file, 'nid');
+  }
+
+  private uploadDocument(
+    id: number,
+    file: File,
+    documentType: string,
+  ): Observable<ApiResponse<FileUploadResponse>> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.http.post<ApiResponse<FileUploadResponse>>(
+      `${this.baseUrl}/${id}/documents/${documentType}`,
+      formData,
+    );
   }
 }

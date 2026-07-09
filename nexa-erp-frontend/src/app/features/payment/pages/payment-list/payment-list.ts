@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 
 import { AlertService } from '../../../../core/services/alert.service';
 import {
-  Payment,
+  PaymentResponse,
   PaymentStatus,
   PaymentType,
 } from '../../models/payment.model';
@@ -26,7 +26,7 @@ export class PaymentList implements OnInit {
 
   readonly loading = signal(false);
 
-  readonly payments = signal<Payment[]>([]);
+  readonly payments = signal<PaymentResponse[]>([]);
 
   readonly search = signal('');
 
@@ -158,7 +158,7 @@ getMethodLabel(method: string): string {
   }
 }
 
-  async postPayment(payment: Payment): Promise<void> {
+  async postPayment(payment: PaymentResponse): Promise<void> {
 
     const confirmed =
       await this.alert.confirm(
@@ -185,7 +185,7 @@ getMethodLabel(method: string): string {
 
   }
 
-  async cancelPayment(payment: Payment): Promise<void> {
+  async cancelPayment(payment: PaymentResponse): Promise<void> {
 
     const confirmed =
       await this.alert.confirm(
@@ -215,5 +215,28 @@ getMethodLabel(method: string): string {
   getStatusClass(status: PaymentStatus): string {
     return status.toLowerCase();
   }
+
+  downloadReceipt(payment: PaymentResponse): void {
+  if (payment.status !== 'POSTED') {
+    this.alert.warning('Receipt PDF is available only after posting');
+    return;
+  }
+
+  this.paymentService.downloadReceipt(payment.id).subscribe({
+    next: (blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+
+      a.href = url;
+      a.download = `${payment.paymentNumber}.pdf`;
+      a.click();
+
+      window.URL.revokeObjectURL(url);
+    },
+    error: () => {
+      this.alert.error('Failed to download receipt');
+    },
+  });
+}
 
 }

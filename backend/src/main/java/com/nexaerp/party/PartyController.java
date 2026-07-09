@@ -1,5 +1,7 @@
 package com.nexaerp.party;
 
+import com.nexaerp.audit.AuditAction;
+import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.common.response.ApiResponse;
 import com.nexaerp.fileupload.FileUploadService;
 import com.nexaerp.fileupload.dto.FileUploadResponseDto;
@@ -22,6 +24,7 @@ public class PartyController {
     private final PartyService partyService;
     private final FileUploadService fileUploadService;
     private final PartyRepository partyRepository;
+    private final AuditLogService auditLogService;
 
     @PostMapping
     @PreAuthorize("hasAuthority('CREATE_PARTY')")
@@ -29,6 +32,15 @@ public class PartyController {
             @Valid @RequestBody PartyRequestDto request) {
         return ResponseEntity.ok(ApiResponse.success("Party created",
                 partyService.create(request)));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('EDIT_PARTY')")
+    public ResponseEntity<ApiResponse<PartyResponseDto>> update(
+            @PathVariable Long id,
+            @Valid @RequestBody PartyRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success("Party updated",
+                partyService.update(id, request)));
     }
 
     @GetMapping("/{id}")
@@ -71,6 +83,13 @@ public ResponseEntity<ApiResponse<FileUploadResponseDto>> uploadTradeLicense(
     partyRepository.findById(id).ifPresent(party -> {
         party.setTradeLicenseUrl(response.getFileUrl());
         partyRepository.save(party);
+        auditLogService.log(
+                AuditAction.UPLOADED,
+                "PARTY_DOCUMENT",
+                party.getId(),
+                null,
+                "Trade License uploaded: " + response.getOriginalName()
+        );
     });
 
     return ResponseEntity.ok(ApiResponse.success(
@@ -88,6 +107,13 @@ public ResponseEntity<ApiResponse<FileUploadResponseDto>> uploadTradeLicense(
         partyRepository.findById(id).ifPresent(party -> {
             party.setBinCertificateUrl(response.getFileUrl());
             partyRepository.save(party);
+            auditLogService.log(
+                    AuditAction.UPLOADED,
+                    "PARTY_DOCUMENT",
+                    party.getId(),
+                    null,
+                    "Bin Certificate: " + response.getOriginalName()
+            );
         });
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -105,6 +131,13 @@ public ResponseEntity<ApiResponse<FileUploadResponseDto>> uploadTradeLicense(
         partyRepository.findById(id).ifPresent(party -> {
             party.setTinCertificateUrl(response.getFileUrl());
             partyRepository.save(party);
+            auditLogService.log(
+                    AuditAction.UPLOADED,
+                    "PARTY_DOCUMENT",
+                    party.getId(),
+                    null,
+                    "Tin Certificate: " + response.getOriginalName()
+            );
         });
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -122,6 +155,13 @@ public ResponseEntity<ApiResponse<FileUploadResponseDto>> uploadTradeLicense(
         partyRepository.findById(id).ifPresent(party -> {
             party.setNidUrl(response.getFileUrl());
             partyRepository.save(party);
+            auditLogService.log(
+                    AuditAction.UPLOADED,
+                    "PARTY_DOCUMENT",
+                    party.getId(),
+                    null,
+                    "NID: " + response.getOriginalName()
+            );
         });
 
         return ResponseEntity.ok(ApiResponse.success("NID uploaded", response));

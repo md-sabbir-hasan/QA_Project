@@ -4,61 +4,51 @@ import { Observable } from 'rxjs';
 
 import { APP_CONFIG } from '../../../core/config/app.config';
 import { ApiResponse } from '../../../core/models/api-response.model';
-
-import {
-  Payment,
-  PaymentRequest,
-} from '../models/payment.model';
+import { PaymentRequest, PaymentResponse } from '../models/payment.model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class PaymentService {
+  private readonly baseUrl = `${APP_CONFIG.apiUrl}/payments`;
 
-  private readonly baseUrl =
-    `${APP_CONFIG.apiUrl}/payments`;
+  constructor(private http: HttpClient) {}
 
-  constructor(
-    private http: HttpClient
-  ) {}
-
-  getAll(): Observable<ApiResponse<Payment[]>> {
-    return this.http.get<ApiResponse<Payment[]>>(
-      this.baseUrl
-    );
+  getAll(): Observable<ApiResponse<PaymentResponse[]>> {
+    return this.http.get<ApiResponse<PaymentResponse[]>>(this.baseUrl);
   }
 
-  getById(id: number): Observable<ApiResponse<Payment>> {
-    return this.http.get<ApiResponse<Payment>>(
-      `${this.baseUrl}/${id}`
-    );
+  getById(id: number): Observable<ApiResponse<PaymentResponse>> {
+    return this.http.get<ApiResponse<PaymentResponse>>(`${this.baseUrl}/${id}`);
   }
 
-  getByParty(partyId: number): Observable<ApiResponse<Payment[]>> {
-    return this.http.get<ApiResponse<Payment[]>>(
+  getByParty(partyId: number): Observable<ApiResponse<PaymentResponse[]>> {
+    return this.http.get<ApiResponse<PaymentResponse[]>>(
       `${this.baseUrl}/party/${partyId}`
     );
   }
 
-  create(request: PaymentRequest): Observable<ApiResponse<Payment>> {
-    return this.http.post<ApiResponse<Payment>>(
-      this.baseUrl,
-      request
-    );
+  create(request: PaymentRequest): Observable<ApiResponse<PaymentResponse>> {
+    return this.http.post<ApiResponse<PaymentResponse>>(this.baseUrl, request);
   }
 
-  post(id: number): Observable<ApiResponse<Payment>> {
-    return this.http.post<ApiResponse<Payment>>(
+  post(id: number): Observable<ApiResponse<PaymentResponse>> {
+    return this.http.post<ApiResponse<PaymentResponse>>(
       `${this.baseUrl}/${id}/post`,
       {}
     );
   }
 
-  cancel(id: number): Observable<ApiResponse<Payment>> {
-    return this.http.post<ApiResponse<Payment>>(
+  cancel(id: number): Observable<ApiResponse<PaymentResponse>> {
+    return this.http.post<ApiResponse<PaymentResponse>>(
       `${this.baseUrl}/${id}/cancel`,
       {}
     );
   }
 
+  downloadReceipt(id: number): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${id}/receipt`, {
+      responseType: 'blob',
+    });
+  }
 }
