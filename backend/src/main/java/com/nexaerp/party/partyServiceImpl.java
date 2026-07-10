@@ -133,6 +133,29 @@ public class partyServiceImpl implements PartyService{
         );
     }
 
+    @Override
+    @Transactional
+    public void activate(Long id) {
+        Party party = partyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Party not found"));
+
+        if (Boolean.TRUE.equals(party.getIsActive())) {
+            throw new BusinessRuleException("Party is already active");
+        }
+
+        party.setIsActive(true);
+
+        partyRepository.save(party);
+
+        auditLogService.log(
+                AuditAction.ACTIVATED,
+                "PARTY",
+                party.getId(),
+                "INACTIVE",
+                "ACTIVE"
+        );
+    }
+
 
                               // -- Private Helpers --
     private void createOpeningBalanceEntry (Party party){

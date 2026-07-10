@@ -5,6 +5,8 @@ import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
 import com.nexaerp.banking.dto.BankTransactionRequestDto;
 import com.nexaerp.banking.dto.BankTransactionResponseDto;
+import com.nexaerp.banking.dto.BankTransferRequestDto;
+import com.nexaerp.banking.dto.BankTransferResponseDto;
 import com.nexaerp.banking.entity.BankAccount;
 import com.nexaerp.banking.entity.BankTransaction;
 import com.nexaerp.banking.enums.TransactionSourceType;
@@ -17,6 +19,7 @@ import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.journal.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -38,40 +41,29 @@ public class BankTransactionServiceImpl implements BankTransactionService {
 
 
     @Override
+    @Transactional
     public BankTransactionResponseDto create(BankTransactionRequestDto request) {
         BankAccount bankAccount = bankAccountRepository.findById(request.getBankAccountId())
                 .orElseThrow(() -> new ResourceNotFoundException("Bank account not found"));
 
+        if (!Boolean.TRUE.equals(bankAccount.getIsActive())) {
+            throw new BusinessRuleException("Cannot post a transaction to an inactive bank account");
+        }
+
         Account contraAccount = accountRepository.findById(request.getContraAccountId())
                 .orElseThrow(() -> new ResourceNotFoundException("Contra account not found"));
 
-        BankTransaction transaction = BankTransaction.builder()
-                .transactionNumber(generateTransactionNumber())
-                .bankAccount(bankAccount)
-                .transactionDate(request.getTransactionDate())
-                .transactionType(request.getTransactionType())
-                .amount(request.getAmount())
-                .description(request.getDescription())
-                .referenceNumber(request.getReferenceNumber())
-                .contraAccountId(request.getContraAccountId())
-                .reconciled(false)
-                .sourceType(TransactionSourceType.MANUAL)
-                .build();
-
-        BankTransaction saved = bankTransactionRepository.save(transaction);
-
-        // Update bank account balance
-        if (request.getTransactionType() == TransactionType.CREDIT) {
-            bankAccount.setCurrentBalance(
-                    bankAccount.getCurrentBalance().add(request.getAmount()));
-        } else {
-            bankAccount.setCurrentBalance(
-                    bankAccount.getCurrentBalance().subtract(request.getAmount()));
-        }
-        bankAccountRepository.save(bankAccount);
-
-        // Create Journal Entry
-        createJournalEntry(saved, bankAccount, contraAccount);
+        BankTransaction saved = createInternal(
+                bankAccount,
+                request.getTransactionDate(),
+                request.getTransactionType(),
+                request.getAmount(),
+                request.getDescription(),
+                request.getReferenceNumber(),
+                contraAccount,
+                TransactionSourceType.MANUAL,
+                null
+        );
 
         return toResponse(saved);
     }
@@ -109,9 +101,14 @@ public class BankTransactionServiceImpl implements BankTransactionService {
     }
 
     @Override
+    @Transactional
     public BankTransactionResponseDto reconcile(Long id) {
         BankTransaction transaction = bankTransactionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
+
+        if (Boolean.TRUE.equals(transaction.getVoided())) {
+            throw new BusinessRuleException("Cannot reconcile a voided transaction");
+        }
 
         if (transaction.getReconciled()) {
             throw new BusinessRuleException("Transaction already reconciled");
@@ -123,9 +120,185 @@ public class BankTransactionServiceImpl implements BankTransactionService {
         return toResponse(bankTransactionRepository.save(transaction));
     }
 
+    @Override
+    @Transactional
+    public BankTransactionResponseDto voidTransaction(Long id) {
+        BankTransaction transaction = bankTransactionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
+
+        if (Boolean.TRUE.equals(transaction.getVoided())) {
+            throw new BusinessRuleException("Transaction is already voided");
+        }
+
+        if (Boolean.TRUE.equals(transaction.getReconciled())) {
+            throw new BusinessRuleException(
+                    "Cannot void a reconciled transaction. Un-reconcile it first.");
+        }
+
+        BankAccount bankAccount = transaction.getBankAccount();
+
+        // Reverse the bank account balance effect
+        if (transaction.getTransactionType() == TransactionType.CREDIT) {
+            bankAccount.setCurrentBalance(
+                    bankAccount.getCurrentBalance().subtract(transaction.getAmount()));
+        } else {
+            bankAccount.setCurrentBalance(
+                    bankAccount.getCurrentBalance().add(transaction.getAmount()));
+        }
+        bankAccountRepository.save(bankAccount);
+
+        // Reverse the linked journal entry (Dr/Cr swapped)
+        journalEntryRepository
+                .findBySourceTypeAndSourceId(JournalSourceType.BANK_TRANSACTION, transaction.getId())
+                .ifPresent(original -> {
+                    if (original.getStatus() == JournalStatus.REVERSED) {
+                        throw new BusinessRuleException("Journal entry is already reversed");
+                    }
+
+                    JournalEntry reversal = new JournalEntry();
+                    reversal.setEntryNumber(generateJournalNumber());
+                    reversal.setDate(LocalDate.now());
+                    reversal.setDescription("Void - " + transaction.getTransactionNumber());
+                    reversal.setType(JournalEntryType.BANK);
+                    reversal.setStatus(JournalStatus.POSTED);
+                    reversal.setSourceType(JournalSourceType.BANK_TRANSACTION);
+                    reversal.setSourceId(transaction.getId());
+                    reversal.setTotalAmount(original.getTotalAmount());
+                    reversal.setReversedFromId(original.getId());
+                    reversal.setReferenceNumber("REV-" + original.getReferenceNumber());
+
+                    JournalEntry savedReversal = journalEntryRepository.save(reversal);
+
+                    List<JournalLine> originalLines =
+                            journalLineRepository.findByJournalEntryId(original.getId());
+
+                    originalLines.forEach(line ->
+                            saveLineAndUpdateBalance(savedReversal, line.getAccount(),
+                                    line.getCredit(), line.getDebit())); // swapped
+
+                    original.setStatus(JournalStatus.REVERSED);
+                    journalEntryRepository.save(original);
+                });
+
+        transaction.setVoided(true);
+        transaction.setVoidedAt(LocalDateTime.now());
+
+        return toResponse(bankTransactionRepository.save(transaction));
+    }
+
+    @Override
+    @Transactional
+    public BankTransferResponseDto transfer(BankTransferRequestDto request) {
+        if (request.getFromBankAccountId().equals(request.getToBankAccountId())) {
+            throw new BusinessRuleException("Source and destination bank accounts must be different");
+        }
+
+        BankAccount fromAccount = bankAccountRepository.findById(request.getFromBankAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Source bank account not found"));
+
+        BankAccount toAccount = bankAccountRepository.findById(request.getToBankAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Destination bank account not found"));
+
+        if (!Boolean.TRUE.equals(fromAccount.getIsActive())) {
+            throw new BusinessRuleException("Source bank account is inactive");
+        }
+        if (!Boolean.TRUE.equals(toAccount.getIsActive())) {
+            throw new BusinessRuleException("Destination bank account is inactive");
+        }
+
+        Account fromCoa = accountRepository.findById(fromAccount.getCoaAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "COA account not found for source bank account"));
+        Account toCoa = accountRepository.findById(toAccount.getCoaAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "COA account not found for destination bank account"));
+
+        String description = (request.getDescription() != null && !request.getDescription().isBlank())
+                ? request.getDescription()
+                : "Transfer: " + fromAccount.getAccountName() + " -> " + toAccount.getAccountName();
+
+        // Debit leg on the source account (money going out), contra = destination's COA
+        BankTransaction debitLeg = createInternal(
+                fromAccount,
+                request.getTransactionDate(),
+                TransactionType.DEBIT,
+                request.getAmount(),
+                description,
+                request.getReferenceNumber(),
+                toCoa,
+                TransactionSourceType.TRANSFER,
+                null
+        );
+
+        // Credit leg on the destination account (money coming in), contra = source's COA
+        BankTransaction creditLeg = createInternal(
+                toAccount,
+                request.getTransactionDate(),
+                TransactionType.CREDIT,
+                request.getAmount(),
+                description,
+                request.getReferenceNumber(),
+                fromCoa,
+                TransactionSourceType.TRANSFER,
+                debitLeg.getId()
+        );
+
+        // Link the debit leg to the credit leg as well, for traceability
+        debitLeg.setSourceId(creditLeg.getId());
+        bankTransactionRepository.save(debitLeg);
+
+        return BankTransferResponseDto.builder()
+                .debitTransaction(toResponse(debitLeg))
+                .creditTransaction(toResponse(creditLeg))
+                .build();
+    }
+
 
     // _______Private helper__________
 
+
+    private BankTransaction createInternal(BankAccount bankAccount,
+                                           LocalDate transactionDate,
+                                           TransactionType transactionType,
+                                           BigDecimal amount,
+                                           String description,
+                                           String referenceNumber,
+                                           Account contraAccount,
+                                           TransactionSourceType sourceType,
+                                           Long sourceId) {
+
+        BankTransaction transaction = BankTransaction.builder()
+                .transactionNumber(generateTransactionNumber())
+                .bankAccount(bankAccount)
+                .transactionDate(transactionDate)
+                .transactionType(transactionType)
+                .amount(amount)
+                .description(description)
+                .referenceNumber(referenceNumber)
+                .contraAccountId(contraAccount.getId())
+                .reconciled(false)
+                .voided(false)
+                .sourceType(sourceType)
+                .sourceId(sourceId)
+                .build();
+
+        BankTransaction saved = bankTransactionRepository.save(transaction);
+
+        // Update bank account balance
+        if (transactionType == TransactionType.CREDIT) {
+            bankAccount.setCurrentBalance(
+                    bankAccount.getCurrentBalance().add(amount));
+        } else {
+            bankAccount.setCurrentBalance(
+                    bankAccount.getCurrentBalance().subtract(amount));
+        }
+        bankAccountRepository.save(bankAccount);
+
+        // Create Journal Entry
+        createJournalEntry(saved, bankAccount, contraAccount);
+
+        return saved;
+    }
 
     private void createJournalEntry(BankTransaction transaction,
                                     BankAccount bankAccount,
@@ -149,48 +322,28 @@ public class BankTransactionServiceImpl implements BankTransactionService {
 
         JournalEntry saved = journalEntryRepository.save(entry);
 
-        JournalLine line1 = new JournalLine();
-        JournalLine line2 = new JournalLine();
-
         if (transaction.getTransactionType() == TransactionType.CREDIT) {
             // Money coming in -> Dr Bank COA, Cr Contra Account
-            line1.setJournalEntry(saved);
-            line1.setAccount(bankCoaAccount);
-            line1.setDebit(transaction.getAmount());
-            line1.setCredit(BigDecimal.ZERO);
-            line1.setDescription(transaction.getDescription());
-
-            line2.setJournalEntry(saved);
-            line2.setAccount(contraAccount);
-            line2.setDebit(BigDecimal.ZERO);
-            line2.setCredit(transaction.getAmount());
-            line2.setDescription(transaction.getDescription());
-
-            // Update balances
-            updateBalance(bankCoaAccount, transaction.getAmount(), BigDecimal.ZERO);
-            updateBalance(contraAccount, BigDecimal.ZERO, transaction.getAmount());
-
+            saveLineAndUpdateBalance(saved, bankCoaAccount, transaction.getAmount(), BigDecimal.ZERO);
+            saveLineAndUpdateBalance(saved, contraAccount, BigDecimal.ZERO, transaction.getAmount());
         } else {
-            // Money going out > Dr Contra Account, Cr Bank COA
-            line1.setJournalEntry(saved);
-            line1.setAccount(contraAccount);
-            line1.setDebit(transaction.getAmount());
-            line1.setCredit(BigDecimal.ZERO);
-            line1.setDescription(transaction.getDescription());
-
-            line2.setJournalEntry(saved);
-            line2.setAccount(bankCoaAccount);
-            line2.setDebit(BigDecimal.ZERO);
-            line2.setCredit(transaction.getAmount());
-            line2.setDescription(transaction.getDescription());
-
-            // Update balances
-            updateBalance(contraAccount, transaction.getAmount(), BigDecimal.ZERO);
-            updateBalance(bankCoaAccount, BigDecimal.ZERO, transaction.getAmount());
+            // Money going out -> Dr Contra Account, Cr Bank COA
+            saveLineAndUpdateBalance(saved, contraAccount, transaction.getAmount(), BigDecimal.ZERO);
+            saveLineAndUpdateBalance(saved, bankCoaAccount, BigDecimal.ZERO, transaction.getAmount());
         }
+    }
 
-        journalLineRepository.save(line1);
-        journalLineRepository.save(line2);
+    private void saveLineAndUpdateBalance(JournalEntry entry, Account account,
+                                          BigDecimal debit, BigDecimal credit) {
+        JournalLine line = new JournalLine();
+        line.setJournalEntry(entry);
+        line.setAccount(account);
+        line.setDebit(debit);
+        line.setCredit(credit);
+        line.setDescription(entry.getDescription());
+        journalLineRepository.save(line);
+
+        updateBalance(account, debit, credit);
     }
 
     private void updateBalance(Account account, BigDecimal debit, BigDecimal credit) {
@@ -210,7 +363,7 @@ public class BankTransactionServiceImpl implements BankTransactionService {
         accountRepository.save(account);
     }
 
-    private String generateTransactionNumber() {
+    private synchronized String generateTransactionNumber() {
         int year = Year.now().getValue();
         return bankTransactionRepository.findTopByOrderByIdDesc()
                 .map(last -> {
@@ -221,7 +374,7 @@ public class BankTransactionServiceImpl implements BankTransactionService {
                 .orElse(String.format("TXN-%d-%06d", year, 1));
     }
 
-    private String generateJournalNumber() {
+    private synchronized String generateJournalNumber() {
         return journalEntryRepository.findTopByOrderByIdDesc()
                 .map(last -> {
                     String lastNumber = last.getEntryNumber().replace("JE-", "");
@@ -254,6 +407,8 @@ public class BankTransactionServiceImpl implements BankTransactionService {
                 .contraAccountName(contraAccountName)
                 .reconciled(transaction.getReconciled())
                 .reconciledAt(transaction.getReconciledAt())
+                .voided(transaction.getVoided())
+                .voidedAt(transaction.getVoidedAt())
                 .sourceType(transaction.getSourceType())
                 .createdAt(transaction.getCreatedAt())
                 .build();

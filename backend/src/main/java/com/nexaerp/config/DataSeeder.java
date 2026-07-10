@@ -71,6 +71,7 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"CREATE_PARTY", "Create Party", "PARTY"},
                 new Object[]{"EDIT_PARTY", "Edit Party", "PARTY"},
                 new Object[]{"DEACTIVATE_PARTY", "Deactivate Party", "PARTY"},
+                new Object[]{"ACTIVATE_PARTY", "Activate Party", "PARTY"},
 
                 new Object[]{"VIEW_INVOICE", "View Invoice", "INVOICE"},
                 new Object[]{"CREATE_INVOICE", "Create Invoice", "INVOICE"},
@@ -150,13 +151,24 @@ public class DataSeeder implements CommandLineRunner {
 
     private void createRoleIfNotExists(String name, String description,
                                        List<Permission> permissions) {
-        if (!roleRepository.existsByName(name)) {
+
+        Role role = roleRepository.findByName(name)
+                .orElse(null);
+
+        if (role == null) {
             roleRepository.save(Role.builder()
                     .name(name)
                     .description(description)
                     .permissions(new HashSet<>(permissions))
                     .build());
+            return;
         }
+
+        // Existing role হলে নতুন permissions sync করবে
+        role.setDescription(description);
+        role.getPermissions().addAll(permissions);
+
+        roleRepository.save(role);
     }
 
 

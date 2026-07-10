@@ -3,6 +3,8 @@ package com.nexaerp.banking.controller;
 
 import com.nexaerp.banking.dto.BankTransactionRequestDto;
 import com.nexaerp.banking.dto.BankTransactionResponseDto;
+import com.nexaerp.banking.dto.BankTransferRequestDto;
+import com.nexaerp.banking.dto.BankTransferResponseDto;
 import com.nexaerp.banking.services.BankTransactionService;
 import com.nexaerp.common.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -67,5 +69,21 @@ public class BankTransactionController {
             @PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Transaction reconciled",
                 bankTransactionService.reconcile(id)));
+    }
+
+    @PatchMapping("/{id}/void")
+    @PreAuthorize("hasAuthority('EDIT_BANKING')")
+    public ResponseEntity<ApiResponse<BankTransactionResponseDto>> voidTransaction(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Transaction voided",
+                bankTransactionService.voidTransaction(id)));
+    }
+
+    @PostMapping("/transfer")
+    @PreAuthorize("hasAuthority('CREATE_BANKING')")
+    public ResponseEntity<ApiResponse<BankTransferResponseDto>> transfer(
+            @Valid @RequestBody BankTransferRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success("Transfer completed",
+                bankTransactionService.transfer(request)));
     }
 }

@@ -28,6 +28,8 @@ public class BankTransactionResponseDto {
     private String contraAccountName;
     private Boolean reconciled;
     private LocalDateTime reconciledAt;
+    private Boolean voided;
+    private LocalDateTime voidedAt;
     private TransactionSourceType sourceType;
     private LocalDateTime createdAt;
 }

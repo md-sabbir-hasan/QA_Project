@@ -48,6 +48,9 @@ public class BankTransaction {
     private Boolean reconciled = false;
     private LocalDateTime reconciledAt;
 
+    private Boolean voided = false;
+    private LocalDateTime voidedAt;
+
     @Enumerated(EnumType.STRING)
     private TransactionSourceType sourceType = TransactionSourceType.MANUAL;
 

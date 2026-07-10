@@ -164,29 +164,36 @@ export const routes: Routes = [
       {
         path: 'party',
         loadComponent: () =>
-          import('./features/party/pages/party-list/party-list').then(
-            (m) => m.PartyList,
-          ),
+          import('./features/party/pages/party-list/party-list').then((m) => m.PartyList),
       },
       {
         path: 'party/new',
         loadComponent: () =>
-          import('./features/party/pages/party-form/party-form').then(
-            (m) => m.PartyForm,
-          ),
+          import('./features/party/pages/party-form/party-form').then((m) => m.PartyForm),
       },
       {
         path: 'party/:id',
         loadComponent: () =>
-          import('./features/party/pages/party-details/party-details').then(
-            (m) => m.PartyDetails,
-          ),
+          import('./features/party/pages/party-details/party-details').then((m) => m.PartyDetails),
       },
       {
         path: 'party/:id/edit',
         loadComponent: () =>
-          import('./features/party/pages/party-form/party-form').then(
-            (m) => m.PartyForm,
+          import('./features/party/pages/party-form/party-form').then((m) => m.PartyForm),
+      },
+      {
+        path: 'reports',
+        loadComponent: () =>
+          import('./features/reports/pages/reports-dashboard/reports-dashboard').then(
+            (m) => m.ReportsDashboard,
+          ),
+      },
+
+      {
+        path: 'reports/party-statement',
+        loadComponent: () =>
+          import('./features/reports/pages/party-statement-report/party-statement-report').then(
+            (m) => m.PartyStatementReport,
           ),
       },
 

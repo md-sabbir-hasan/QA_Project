@@ -12,4 +12,5 @@ public interface PartyService {
     List<PartyResponseDto> getAll();
     List<PartyResponseDto> getByType(PartyType type);
     void deactivate(Long id);
+    void activate(Long id);
 }

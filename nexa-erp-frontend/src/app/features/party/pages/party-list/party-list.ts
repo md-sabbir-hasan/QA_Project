@@ -35,9 +35,7 @@ export class PartyList implements OnInit {
         (party.companyName ?? '').toLowerCase().includes(keyword) ||
         (party.phone ?? '').toLowerCase().includes(keyword);
 
-      const matchType =
-        !this.selectedType() ||
-        party.type === this.selectedType();
+      const matchType = !this.selectedType() || party.type === this.selectedType();
 
       const matchStatus =
         !this.selectedStatus() ||
@@ -50,27 +48,19 @@ export class PartyList implements OnInit {
 
   readonly totalParties = computed(() => this.parties().length);
 
-  readonly customerCount = computed(() =>
-    this.parties().filter(
-      p => p.type === 'CUSTOMER' || p.type === 'BOTH'
-    ).length
+  readonly customerCount = computed(
+    () => this.parties().filter((p) => p.type === 'CUSTOMER' || p.type === 'BOTH').length,
   );
 
-  readonly vendorCount = computed(() =>
-    this.parties().filter(
-      p => p.type === 'VENDOR' || p.type === 'BOTH'
-    ).length
+  readonly vendorCount = computed(
+    () => this.parties().filter((p) => p.type === 'VENDOR' || p.type === 'BOTH').length,
   );
 
-  readonly inactiveCount = computed(() =>
-    this.parties().filter(
-      p => !p.isActive
-    ).length
-  );
+  readonly inactiveCount = computed(() => this.parties().filter((p) => !p.isActive).length);
 
   constructor(
     private readonly partyService: PartyService,
-    private readonly alert: AlertService
+    private readonly alert: AlertService,
   ) {}
 
   ngOnInit(): void {
@@ -88,7 +78,7 @@ export class PartyList implements OnInit {
       error: () => {
         this.loading.set(false);
         this.alert.error('Failed to load parties');
-      }
+      },
     });
   }
 
@@ -99,37 +89,39 @@ export class PartyList implements OnInit {
   }
 
   deactivate(party: Party): void {
-
     if (!confirm(`Deactivate ${party.name}?`)) {
       return;
     }
 
     this.partyService.deactivate(party.id).subscribe({
-
       next: () => {
-
         this.alert.success('Party deactivated');
 
         this.loadParties();
-
       },
 
       error: (err) => {
-
-        this.alert.error(
-          err?.error?.message ?? 'Failed to deactivate party'
-        );
-
-      }
-
+        this.alert.error(err?.error?.message ?? 'Failed to deactivate party');
+      },
     });
+  }
 
+  activate(party: Party): void {
+    this.partyService.activate(party.id).subscribe({
+      next: () => {
+        this.alert.success('Party activated');
+
+        this.loadParties();
+      },
+
+      error: (err) => {
+        this.alert.error(err?.error?.message ?? 'Failed to activate party');
+      },
+    });
   }
 
   getTypeClass(type: PartyType): string {
-
     switch (type) {
-
       case 'CUSTOMER':
         return 'customer';
 
@@ -138,15 +130,10 @@ export class PartyList implements OnInit {
 
       default:
         return 'both';
-
     }
-
   }
 
   getStatusClass(active: boolean): string {
-
     return active ? 'active' : 'inactive';
-
   }
-
 }

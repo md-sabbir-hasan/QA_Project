@@ -2,6 +2,8 @@ package com.nexaerp.banking.services;
 
 import com.nexaerp.banking.dto.BankTransactionRequestDto;
 import com.nexaerp.banking.dto.BankTransactionResponseDto;
+import com.nexaerp.banking.dto.BankTransferRequestDto;
+import com.nexaerp.banking.dto.BankTransferResponseDto;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -14,4 +16,6 @@ public interface BankTransactionService {
     List<BankTransactionResponseDto> getByAccountAndDateRange(
             Long bankAccountId, LocalDate from, LocalDate to);
     BankTransactionResponseDto reconcile(Long id);
+    BankTransactionResponseDto voidTransaction(Long id);
+    BankTransferResponseDto transfer(BankTransferRequestDto request);
 }

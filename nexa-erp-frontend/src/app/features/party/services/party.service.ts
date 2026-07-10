@@ -81,10 +81,11 @@ export class PartyService {
   }
 
   deactivate(id: number): Observable<ApiResponse<void>> {
-    return this.http.patch<ApiResponse<void>>(
-      `${this.baseUrl}/${id}/deactivate`,
-      {},
-    );
+    return this.http.patch<ApiResponse<void>>(`${this.baseUrl}/${id}/deactivate`, {});
+  }
+
+  activate(id: number): Observable<ApiResponse<void>> {
+    return this.http.patch<ApiResponse<void>>(`${this.baseUrl}/${id}/activate`, {});
   }
 
   uploadTradeLicense(id: number, file: File): Observable<ApiResponse<FileUploadResponse>> {

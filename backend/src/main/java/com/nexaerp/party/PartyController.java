@@ -69,6 +69,17 @@ public class PartyController {
         return ResponseEntity.ok(ApiResponse.success("Party deactivated", null));
     }
 
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasAuthority('ACTIVATE_PARTY')")
+    public ResponseEntity<ApiResponse<Void>> activate(@PathVariable Long id) {
+
+        partyService.activate(id);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Party activated", null)
+        );
+    }
+
 //    for file upload
 // Document upload endpoint
 @PostMapping("/{id}/documents/trade-license")

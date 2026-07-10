@@ -35,13 +35,17 @@
   </section>
 
   <section class="filter-panel">
-    <input type="text" placeholder="Search code, name, company, phone..." [ngModel]="searchText()"
-      (ngModelChange)="searchText.set($event)" />
+    <input
+      type="text"
+      placeholder="Search code, name, company, phone..."
+      [ngModel]="searchText()"
+      (ngModelChange)="searchText.set($event)"
+    />
 
     <select [ngModel]="selectedType()" (ngModelChange)="selectedType.set($event)">
       <option value="">All Types</option>
       @for (type of partyTypes; track type) {
-      <option [value]="type">{{ type }}</option>
+        <option [value]="type">{{ type }}</option>
       }
     </select>
 
@@ -51,9 +55,7 @@
       <option value="INACTIVE">Inactive</option>
     </select>
 
-    <button type="button" class="clear-btn" (click)="clearFilters()">
-      Clear
-    </button>
+    <button type="button" class="clear-btn" (click)="clearFilters()">Clear</button>
   </section>
 
   <section class="table-card">
@@ -63,88 +65,88 @@
     </div>
 
     @if (loading()) {
-    <div class="loading-box">Loading parties...</div>
+      <div class="loading-box">Loading parties...</div>
     } @else {
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Code</th>
-            <th>Name</th>
-            <th>Company</th>
-            <th>Type</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th class="text-end">Opening Balance</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Name</th>
+              <th>Company</th>
+              <th>Type</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th class="text-end">Opening Balance</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
 
-        <tbody>
-          @for (party of filteredParties(); track party.id) {
-          <tr>
-            <td>
-              <strong>{{ party.code }}</strong>
-            </td>
+          <tbody>
+            @for (party of filteredParties(); track party.id) {
+              <tr>
+                <td>
+                  <strong>{{ party.code }}</strong>
+                </td>
 
-            <td>
-              <strong>{{ party.name }}</strong>
-              @if (party.contactPerson) {
-              <small>Contact: {{ party.contactPerson }}</small>
-              }
-            </td>
+                <td>
+                  <strong>{{ party.name }}</strong>
+                  @if (party.contactPerson) {
+                    <small>Contact: {{ party.contactPerson }}</small>
+                  }
+                </td>
 
-            <td>{{ party.companyName || '-' }}</td>
+                <td>{{ party.companyName || '-' }}</td>
 
-            <td>
-              <span class="type-pill" [class]="getTypeClass(party.type)">
-                {{ party.type }}
-              </span>
-            </td>
+                <td>
+                  <span class="type-pill" [class]="getTypeClass(party.type)">
+                    {{ party.type }}
+                  </span>
+                </td>
 
-            <td>{{ party.phone || '-' }}</td>
+                <td>{{ party.phone || '-' }}</td>
 
-            <td>{{ party.email || '-' }}</td>
+                <td>{{ party.email || '-' }}</td>
 
-            <td class="text-end balance">
-              {{ party.openingBalance || 0 | number:'1.2-2' }}
-            </td>
+                <td class="text-end balance">
+                  {{ party.openingBalance || 0 | number: '1.2-2' }}
+                </td>
 
-            <td>
-              <span class="status-badge" [class]="getStatusClass(party.isActive)">
-                {{ party.isActive ? 'ACTIVE' : 'INACTIVE' }}
-              </span>
-            </td>
+                <td>
+                  <span class="status-badge" [class]="getStatusClass(party.isActive)">
+                    {{ party.isActive ? 'ACTIVE' : 'INACTIVE' }}
+                  </span>
+                </td>
 
-            <td>
-              <div class="action-group">
-                <a [routerLink]="['/party', party.id]" class="btn-view">
-                  View
-                </a>
+                <td>
+                  <div class="action-group">
+                    <a [routerLink]="['/party', party.id]" class="btn-view"> View </a>
 
-                @if (party.isActive) {
-                <a [routerLink]="['/party', party.id, 'edit']" class="btn-edit">
-                  Edit
-                </a>
+                    @if (party.isActive) {
+                      <a [routerLink]="['/party', party.id, 'edit']" class="btn-edit"> Edit </a>
 
-                <button type="button" class="btn-danger" (click)="deactivate(party)">
-                  Disable
-                </button>
-                }
-              </div>
-            </td>
-          </tr>
-          } @empty {
-          <tr>
-            <td colspan="9">
-              <div class="empty-box">No parties found</div>
-            </td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+                      <button type="button" class="btn-danger" (click)="deactivate(party)">
+                        Disable
+                      </button>
+                    } @else {
+                      <button type="button" class="btn-success" (click)="activate(party)">
+                        Activate
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9">
+                  <div class="empty-box">No parties found</div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     }
   </section>
 </div>
