@@ -168,6 +168,14 @@ export const routes: Routes = [
             (m) => m.PaymentDetails,
           ),
       },
+      //banking
+      {
+        path: 'banking',
+        loadComponent: () =>
+          import('./features/banking/pages/bank-account-list/bank-account-list').then(
+            (m) => m.BankAccountList,
+          ),
+      },
 
       {
         path: 'party',

@@ -63,4 +63,11 @@ public class BankAccountController {
         bankAccountService.deactivate(id);
         return ResponseEntity.ok(ApiResponse.success("Bank account deactivated", null));
     }
+
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasAuthority('EDIT_BANKING')")
+    public ResponseEntity<ApiResponse<Void>> activate(@PathVariable Long id) {
+        bankAccountService.activate(id);
+        return ResponseEntity.ok(ApiResponse.success("Bank account activated", null));
+    }
 }

@@ -8,6 +8,7 @@ import com.nexaerp.banking.entity.BankAccount;
 import com.nexaerp.banking.enums.BankAccountType;
 import com.nexaerp.banking.repository.BankAccountRepository;
 import com.nexaerp.banking.services.BankAccountService;
+import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.journal.*;
 import lombok.RequiredArgsConstructor;
@@ -106,7 +107,27 @@ public class BankAccountServiceImpl implements BankAccountService {
 
         BankAccount account = bankAccountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank account not found"));
+
+        if (!Boolean.TRUE.equals(account.getIsActive())) {
+            throw new BusinessRuleException("Bank account is already inactive");
+        }
+
         account.setIsActive(false);
+        bankAccountRepository.save(account);
+
+    }
+
+    @Override
+    public void activate(Long id) {
+
+        BankAccount account = bankAccountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Bank account not found"));
+
+        if (Boolean.TRUE.equals(account.getIsActive())) {
+            throw new BusinessRuleException("Bank account is already active");
+        }
+
+        account.setIsActive(true);
         bankAccountRepository.save(account);
 
     }

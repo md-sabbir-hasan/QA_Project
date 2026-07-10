@@ -13,4 +13,5 @@ public interface BankAccountService {
     List<BankAccountResponseDto> getAll();
     List<BankAccountResponseDto> getByType(BankAccountType type);
     void deactivate(Long id);
+    void activate(Long id);
 }
