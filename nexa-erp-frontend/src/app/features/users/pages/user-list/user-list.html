@@ -79,8 +79,8 @@
                   </span>
                 </td>
 
-                <td>{{ user.lastLoginAt ? (user.lastLoginAt | date:'medium') : '-' }}</td>
-                <td>{{ user.createdAt | date:'mediumDate' }}</td>
+                <td>{{ user.lastLoginAt ? (user.lastLoginAt | date: 'medium') : '-' }}</td>
+                <td>{{ user.createdAt | date: 'mediumDate' }}</td>
 
                 <td class="text-end">
                   <div class="action-group">
@@ -94,7 +94,17 @@
                       Edit
                     </button>
 
-                    @if (user.status === 'INACTIVE') {
+                    @if (user.status === 'ACTIVE') {
+                      <button
+                        class="action-btn danger"
+                        type="button"
+                        [disabled]="isSuperAdmin(user)"
+                        (click)="deactivateUser(user)"
+                      >
+                        <i class="bi bi-slash-circle"></i>
+                        Deactivate
+                      </button>
+                    } @else if (user.status === 'INACTIVE') {
                       <button
                         class="action-btn success"
                         type="button"
@@ -104,15 +114,25 @@
                         <i class="bi bi-check-circle"></i>
                         Activate
                       </button>
-                    } @else {
+                    } @else if (user.status === 'PENDING') {
                       <button
-                        class="action-btn danger"
+                        class="action-btn warning"
                         type="button"
                         [disabled]="isSuperAdmin(user)"
-                        (click)="deactivateUser(user)"
+                      
                       >
-                        <i class="bi bi-slash-circle"></i>
-                        Deactivate
+                        <i class="bi bi-envelope-arrow-up"></i>
+                        Resend Invite
+                      </button>
+                    } @else if (user.status === 'LOCKED') {
+                      <button
+                        class="action-btn warning"
+                        type="button"
+                        [disabled]="isSuperAdmin(user)"
+                      
+                      >
+                        <i class="bi bi-unlock"></i>
+                        Unlock
                       </button>
                     }
                   </div>
@@ -199,13 +219,7 @@
           <button class="clear-btn" type="button" (click)="closeUserModal()">Cancel</button>
 
           <button class="primary-btn" type="submit" [disabled]="submitting()">
-            {{
-              submitting()
-                ? 'Saving...'
-                : selectedUser
-                  ? 'Update User'
-                  : 'Invite User'
-            }}
+            {{ submitting() ? 'Saving...' : selectedUser ? 'Update User' : 'Invite User' }}
           </button>
         </div>
       </form>

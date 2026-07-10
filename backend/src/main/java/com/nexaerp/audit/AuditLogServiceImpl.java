@@ -3,13 +3,13 @@ package com.nexaerp.audit;
 import com.nexaerp.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -48,8 +48,8 @@ public class AuditLogServiceImpl implements AuditLogService{
                 .entityName(entityName)
                 .entityId(entityId)
                 .action(action)
-                .oldValue(oldValue)
-                .newValue(newValue)
+                .oldValue(AuditMasker.mask(oldValue))
+                .newValue(AuditMasker.mask(newValue))
                 .ipAddress(ipAddress)
                 .build();
 
@@ -57,19 +57,19 @@ public class AuditLogServiceImpl implements AuditLogService{
     }
 
     @Override
-    public List<AuditLog> getEntityHistory(String entityName, Long entityId) {
+    public Page<AuditLog> getEntityHistory(String entityName, Long entityId, Pageable pageable) {
         return auditLogRepository
-                .findByEntityNameAndEntityIdOrderByCreatedAtDesc(entityName, entityId);
+                .findByEntityNameAndEntityIdOrderByCreatedAtDesc(entityName, entityId, pageable);
     }
 
     @Override
-    public List<AuditLog> getUserActivity(Long userId) {
-        return auditLogRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    public Page<AuditLog> getUserActivity(Long userId, Pageable pageable) {
+        return auditLogRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
     }
 
     @Override
-    public List<AuditLog> getEntityLogs(String entityName) {
-        return auditLogRepository.findByEntityNameOrderByCreatedAtDesc(entityName);
+    public Page<AuditLog> getEntityLogs(String entityName, Pageable pageable) {
+        return auditLogRepository.findByEntityNameOrderByCreatedAtDesc(entityName, pageable);
     }
 
 

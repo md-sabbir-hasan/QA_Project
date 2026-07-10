@@ -1,7 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, WritableSignal, computed, signal } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, finalize, tap } from 'rxjs';
+
 import { APP_CONFIG } from '../config/app.config';
+import { STORAGE_KEYS } from '../constants/storage.constants';
 import { ApiResponse } from '../models/api-response.model';
 import {
   ForgotPasswordRequest,
@@ -14,7 +16,6 @@ import {
 import { CurrentUser } from '../models/current-user.model';
 import { StorageService } from '../services/storage.service';
 import { TokenService } from '../services/token.service';
-import { STORAGE_KEYS } from '../constants/storage.constants';
 
 @Injectable({
   providedIn: 'root',
@@ -25,6 +26,7 @@ export class AuthService {
   private readonly currentUserSignal: WritableSignal<CurrentUser | null>;
 
   readonly currentUser;
+
   readonly isLoggedIn;
 
   constructor(
@@ -32,12 +34,20 @@ export class AuthService {
     private tokenService: TokenService,
     private storage: StorageService,
   ) {
+    // পুরনো duplicate keys startup-এ clean করবে
+    this.tokenService.clearLegacyTokens();
+
     this.currentUserSignal = signal<CurrentUser | null>(
       this.storage.get<CurrentUser>(STORAGE_KEYS.CURRENT_USER),
     );
 
     this.currentUser = this.currentUserSignal.asReadonly();
-    this.isLoggedIn = computed(() => !!this.tokenService.getAccessToken());
+
+    this.isLoggedIn = computed(() => {
+      const user = this.currentUserSignal();
+
+      return user !== null && this.tokenService.isLoggedIn();
+    });
   }
 
   login(request: LoginRequest): Observable<ApiResponse<LoginResponse>> {
@@ -75,14 +85,25 @@ export class AuthService {
   }
 
   logout(): Observable<ApiResponse<null>> {
-    return this.http
-      .post<ApiResponse<null>>(`${this.baseUrl}/logout`, {})
-      .pipe(tap(() => this.clearSession()));
+    return this.http.post<ApiResponse<null>>(`${this.baseUrl}/logout`, {}).pipe(
+      // Backend logout fail হলেও browser session clear হবে
+      finalize(() => this.clearSession()),
+    );
   }
 
   clearSession(): void {
     this.tokenService.clearTokens();
-    this.storage.remove(STORAGE_KEYS.CURRENT_USER);
+
+    this.storage.removeMany([
+      STORAGE_KEYS.CURRENT_USER,
+
+      // পুরনো duplicate user key
+      'user',
+
+      // APP_CONFIG দিয়ে আগে save হয়ে থাকলে সম্ভাব্য keys
+      'current_user',
+    ]);
+
     this.currentUserSignal.set(null);
   }
 
@@ -99,6 +120,8 @@ export class AuthService {
   }
 
   validateInvite(token: string): Observable<ApiResponse<unknown>> {
-    return this.http.get<ApiResponse<unknown>>(`${this.baseUrl}/validate-invite?token=${token}`);
+    return this.http.get<ApiResponse<unknown>>(`${this.baseUrl}/validate-invite`, {
+      params: { token },
+    });
   }
 }

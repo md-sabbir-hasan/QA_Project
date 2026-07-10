@@ -101,7 +101,11 @@ public class DataSeeder implements CommandLineRunner {
 
                 new Object[]{"MANAGE_USERS", "Manage Users", "USER_MANAGEMENT"},
                 new Object[]{"MANAGE_ROLES", "Manage Roles", "USER_MANAGEMENT"},
-                new Object[]{"MANAGE_PERMISSIONS", "Manage Permissions", "USER_MANAGEMENT"}
+                new Object[]{"MANAGE_PERMISSIONS", "Manage Permissions", "USER_MANAGEMENT"},
+
+                new Object[]{"VIEW_AUDIT_LOGS", "View Audit Logs", "AUDIT"}
+
+
         );
 
         for (Object[] p : permissions) {

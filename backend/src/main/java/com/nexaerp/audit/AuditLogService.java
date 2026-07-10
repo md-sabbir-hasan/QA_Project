@@ -1,6 +1,7 @@
 package com.nexaerp.audit;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface AuditLogService {
     // Save a log entry
@@ -8,11 +9,11 @@ public interface AuditLogService {
              String oldValue, String newValue);
 
     // Get history of a specific record
-    List<AuditLog> getEntityHistory(String entityName, Long entityId);
+    Page<AuditLog> getEntityHistory(String entityName, Long entityId, Pageable pageable);
 
     // Get activity of a specific user
-    List<AuditLog> getUserActivity(Long userId);
+    Page<AuditLog> getUserActivity(Long userId, Pageable pageable);
 
     // Get all logs for an entity type
-    List<AuditLog> getEntityLogs(String entityName);
+    Page<AuditLog> getEntityLogs(String entityName, Pageable pageable);
 }

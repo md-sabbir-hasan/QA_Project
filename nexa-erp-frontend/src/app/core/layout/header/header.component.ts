@@ -20,11 +20,10 @@ export class HeaderComponent {
   logout(): void {
     this.authService.logout().subscribe({
       next: () => {
-        this.authService.clearSession();
         this.router.navigate(['/login']);
       },
       error: () => {
-        this.authService.clearSession();
+        // finalize() session already clear করেছে
         this.router.navigate(['/login']);
       },
     });

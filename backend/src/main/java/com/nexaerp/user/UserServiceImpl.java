@@ -208,16 +208,35 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void activate(Long id) {
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if (user.getStatus() == UserStatus.ACTIVE) {
+        UserStatus oldStatus = user.getStatus();
+
+        if (oldStatus == UserStatus.ACTIVE) {
             throw new BusinessRuleException("User is already active");
         }
 
-        UserStatus oldStatus = user.getStatus();
+
+        if (oldStatus == UserStatus.PENDING) {
+            throw new BusinessRuleException(
+                    "Pending user cannot be activated. The user must set a password using the invitation link."
+            );
+        }
+
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new BusinessRuleException(
+                    "User cannot be activated before setting a password."
+            );
+        }
+
+        
 
         user.setStatus(UserStatus.ACTIVE);
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
+
         userRepository.save(user);
 
         auditLogService.log(
@@ -225,7 +244,7 @@ public class UserServiceImpl implements UserService {
                 "USER",
                 user.getId(),
                 oldStatus.name(),
-                "ACTIVE"
+                UserStatus.ACTIVE.name()
         );
     }
 

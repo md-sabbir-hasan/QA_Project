@@ -11,15 +11,23 @@ export class StorageService {
   get<T>(key: string): T | null {
     const value = localStorage.getItem(key);
 
-    if (!value) {
+    if (value === null) {
       return null;
     }
 
-    return JSON.parse(value) as T;
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return null;
+    }
   }
 
   remove(key: string): void {
     localStorage.removeItem(key);
+  }
+
+  removeMany(keys: string[]): void {
+    keys.forEach((key) => localStorage.removeItem(key));
   }
 
   clear(): void {

@@ -1,5 +1,7 @@
 package com.nexaerp.audit;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -7,12 +9,12 @@ import java.util.List;
 
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
-    List<AuditLog> findByEntityNameAndEntityIdOrderByCreatedAtDesc(
-            String entityName, Long entityId);
+    Page<AuditLog> findByEntityNameAndEntityIdOrderByCreatedAtDesc(
+            String entityName, Long entityId, Pageable pageable);
 
-    List<AuditLog> findByUserIdOrderByCreatedAtDesc(Long userId);
+    Page<AuditLog> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
-    List<AuditLog> findByEntityNameOrderByCreatedAtDesc(String entityName);
+    Page<AuditLog> findByEntityNameOrderByCreatedAtDesc(String entityName, Pageable pageable);
 
     List<AuditLog> findTop10ByOrderByCreatedAtDesc();
 }

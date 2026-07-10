@@ -57,6 +57,14 @@ export const routes: Routes = [
       },
 
       {
+        path: 'audit',
+        loadComponent: () =>
+          import('./features/audit/pages/audit-log-list/audit-log-list').then(
+            (m) => m.AuditLogList,
+          ),
+      },
+
+      {
         path: 'accounts',
         loadComponent: () =>
           import('./features/accounts/pages/account-list/account-list').then((m) => m.AccountList),

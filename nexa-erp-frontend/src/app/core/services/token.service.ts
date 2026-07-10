@@ -1,13 +1,15 @@
 import { Injectable } from '@angular/core';
 import { jwtDecode } from 'jwt-decode';
+
 import { STORAGE_KEYS } from '../constants/storage.constants';
 import { JwtPayload } from '../models/jwt-payload.model';
 import { StorageService } from './storage.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TokenService {
+  private readonly legacyKeys = ['access_token', 'refresh_token', 'user'];
 
   constructor(private storage: StorageService) {}
 
@@ -20,17 +22,28 @@ export class TokenService {
   }
 
   saveTokens(accessToken: string, refreshToken: string): void {
+    // পুরনো keys থাকলে remove করবে
+    this.clearLegacyTokens();
+
     this.storage.set(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
     this.storage.set(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
   }
 
   clearTokens(): void {
-    this.storage.remove(STORAGE_KEYS.ACCESS_TOKEN);
-    this.storage.remove(STORAGE_KEYS.REFRESH_TOKEN);
+    this.storage.removeMany([
+      STORAGE_KEYS.ACCESS_TOKEN,
+      STORAGE_KEYS.REFRESH_TOKEN,
+      ...this.legacyKeys,
+    ]);
+  }
+
+  clearLegacyTokens(): void {
+    this.storage.removeMany(this.legacyKeys);
   }
 
   isLoggedIn(): boolean {
     const token = this.getAccessToken();
+
     return !!token && !this.isTokenExpired(token);
   }
 
