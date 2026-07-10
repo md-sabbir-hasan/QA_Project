@@ -16,6 +16,7 @@ public interface BankTransactionService {
     List<BankTransactionResponseDto> getByAccountAndDateRange(
             Long bankAccountId, LocalDate from, LocalDate to);
     BankTransactionResponseDto reconcile(Long id);
+    BankTransactionResponseDto unreconcile(Long id);
     BankTransactionResponseDto voidTransaction(Long id);
     BankTransferResponseDto transfer(BankTransferRequestDto request);
 }

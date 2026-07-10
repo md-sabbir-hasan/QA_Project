@@ -17,11 +17,12 @@ import {
   WalletProvider,
 } from '../../models/bank-account.model';
 import { BankAccountService } from '../../services/bank-account.service';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-bank-account-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe, RouterLink],
   templateUrl: './bank-account-list.html',
   styleUrl: './bank-account-list.scss',
 })
@@ -89,10 +90,7 @@ export class BankAccountList implements OnInit {
     // Only ASSET-type, leaf-level (postable) ledger accounts should be
     // linkable — group/header accounts like "1000 - Asset" are excluded
     this.accountService.getByType('ASSET').subscribe({
-      next: (res) =>
-        this.coaAccounts.set(
-          res.data.filter((a) => a.isActive && (!a.children || a.children.length === 0)),
-        ),
+      next: (res) => this.coaAccounts.set(res.data.filter((a) => a.isActive && !a.hasChildren)),
       error: () => this.alert.error('Failed to load ledger accounts'),
     });
   }

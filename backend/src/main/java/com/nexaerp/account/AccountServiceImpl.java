@@ -131,6 +131,7 @@ public class AccountServiceImpl implements AccountService{
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AccountResponseDto> getByType(AccountType type) {
 
         return accountRepository.findByType(type)
@@ -282,6 +283,8 @@ public class AccountServiceImpl implements AccountService{
         dto.setIsActive(account.getIsActive());
         dto.setIsDefault(account.getIsDefault());
         dto.setCurrentBalance(account.getCurrentBalance());
+        dto.setHasChildren(account.getChildren() != null && !account.getChildren().isEmpty());
+
 
         if (account.getParent() != null) {
             dto.setParentId(account.getParent().getId());

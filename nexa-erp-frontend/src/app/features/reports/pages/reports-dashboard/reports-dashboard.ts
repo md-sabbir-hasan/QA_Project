@@ -38,14 +38,14 @@ export class ReportsDashboard {
       description: 'Revenue, expenses and net profit/loss statement.',
       icon: 'bi bi-graph-up-arrow',
       route: '/reports/profit-loss',
-      status: 'COMING_SOON',
+      status: 'READY',
     },
     {
       title: 'Balance Sheet',
-      description: 'Assets, liabilities and equity position.',
+      description: 'Assets, liabilities and equity as of a selected date.',
       icon: 'bi bi-bank',
       route: '/reports/balance-sheet',
-      status: 'COMING_SOON',
+      status: 'READY',
     },
     {
       title: 'Party Statement',
@@ -59,7 +59,7 @@ export class ReportsDashboard {
       description: 'Customer receivable and vendor payable aging.',
       icon: 'bi bi-calendar-range',
       route: '/reports/aging',
-      status: 'COMING_SOON',
+      status: 'READY',
     },
   ];
 }

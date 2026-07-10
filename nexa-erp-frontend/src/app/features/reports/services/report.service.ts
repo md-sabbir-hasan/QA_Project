@@ -7,6 +7,9 @@ import { ApiResponse } from '../../../core/models/api-response.model';
 import { LedgerResponse } from '../models/ledger.model';
 import { TrialBalanceResponse } from '../models/trial-balance.model';
 import { PartyStatementResponse } from '../models/party-statement.model';
+import { ProfitLossResponse } from '../models/profit-loss.model';
+import { BalanceSheetResponse } from '../models/balance-sheet.model';
+import { AgingResponse } from '../models/aging.model';
 
 @Injectable({
   providedIn: 'root',
@@ -60,6 +63,36 @@ export class ReportService {
     return this.http.get(`${APP_CONFIG.apiUrl}/reports/party-statement/pdf`, {
       params,
       responseType: 'blob' as const,
+    });
+  }
+
+  //profit loss report
+  getProfitLoss(fromDate: string, toDate: string): Observable<ApiResponse<ProfitLossResponse>> {
+    const params = new HttpParams().set('fromDate', fromDate).set('toDate', toDate);
+
+    return this.http.get<ApiResponse<ProfitLossResponse>>(`${this.baseUrl}/profit-loss`, {
+      params,
+    });
+  }
+
+  // get balance sheet report
+  getBalanceSheet(asOfDate: string): Observable<ApiResponse<BalanceSheetResponse>> {
+    const params = new HttpParams().set('asOfDate', asOfDate);
+
+    return this.http.get<ApiResponse<BalanceSheetResponse>>(`${this.baseUrl}/balance-sheet`, {
+      params,
+    });
+  }
+
+  // get aging report
+  getAgingReport(
+    partyType: 'CUSTOMER' | 'VENDOR',
+    asOfDate: string,
+  ): Observable<ApiResponse<AgingResponse>> {
+    const params = new HttpParams().set('partyType', partyType).set('asOfDate', asOfDate);
+
+    return this.http.get<ApiResponse<AgingResponse>>(`${this.baseUrl}/aging`, {
+      params,
     });
   }
 }

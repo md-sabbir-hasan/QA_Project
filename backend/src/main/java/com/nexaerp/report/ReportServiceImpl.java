@@ -4,6 +4,7 @@ package com.nexaerp.report;
 import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
 import com.nexaerp.account.AccountType;
+import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.invoice.Invoice;
 import com.nexaerp.invoice.InvoiceRepository;
@@ -182,22 +183,56 @@ public class ReportServiceImpl implements ReportService{
     }
 
     @Override
-    public ProfitLossResponseDto getProfitLoss(LocalDate fromDate, LocalDate toDate) {
-        List<Account> revenueAccounts = accountRepository.findByType(AccountType.REVENUE);
-        List<Account> expenseAccounts = accountRepository.findByType(AccountType.EXPENSE);
+    public ProfitLossResponseDto getProfitLoss(
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
+        if (fromDate == null || toDate == null) {
+            throw new BusinessRuleException(
+                    "From date and to date are required"
+            );
+        }
+
+        if (fromDate.isAfter(toDate)) {
+            throw new BusinessRuleException(
+                    "From date cannot be after to date"
+            );
+        }
+
+        List<Account> revenueAccounts = accountRepository
+                .findByType(AccountType.REVENUE)
+                .stream()
+                .filter(this::isLeafAccount)
+                .sorted(Comparator.comparing(Account::getCode))
+                .toList();
+
+        List<Account> expenseAccounts = accountRepository
+                .findByType(AccountType.EXPENSE)
+                .stream()
+                .filter(this::isLeafAccount)
+                .sorted(Comparator.comparing(Account::getCode))
+                .toList();
 
         List<ProfitLossRowDto> revenues = new java.util.ArrayList<>();
         BigDecimal totalRevenue = BigDecimal.ZERO;
 
         for (Account account : revenueAccounts) {
-            BigDecimal amount = calculatePeriodBalance(account, fromDate, toDate);
+            BigDecimal amount = calculatePeriodBalance(
+                    account,
+                    fromDate,
+                    toDate
+            );
+
             if (amount.compareTo(BigDecimal.ZERO) != 0) {
-                revenues.add(ProfitLossRowDto.builder()
-                        .accountId(account.getId())
-                        .accountCode(account.getCode())
-                        .accountName(account.getName())
-                        .amount(amount)
-                        .build());
+                revenues.add(
+                        ProfitLossRowDto.builder()
+                                .accountId(account.getId())
+                                .accountCode(account.getCode())
+                                .accountName(account.getName())
+                                .amount(amount)
+                                .build()
+                );
+
                 totalRevenue = totalRevenue.add(amount);
             }
         }
@@ -206,17 +241,26 @@ public class ReportServiceImpl implements ReportService{
         BigDecimal totalExpense = BigDecimal.ZERO;
 
         for (Account account : expenseAccounts) {
-            BigDecimal amount = calculatePeriodBalance(account, fromDate, toDate);
+            BigDecimal amount = calculatePeriodBalance(
+                    account,
+                    fromDate,
+                    toDate
+            );
+
             if (amount.compareTo(BigDecimal.ZERO) != 0) {
-                expenses.add(ProfitLossRowDto.builder()
-                        .accountId(account.getId())
-                        .accountCode(account.getCode())
-                        .accountName(account.getName())
-                        .amount(amount)
-                        .build());
+                expenses.add(
+                        ProfitLossRowDto.builder()
+                                .accountId(account.getId())
+                                .accountCode(account.getCode())
+                                .accountName(account.getName())
+                                .amount(amount)
+                                .build()
+                );
+
                 totalExpense = totalExpense.add(amount);
             }
         }
+
         return ProfitLossResponseDto.builder()
                 .fromDate(fromDate)
                 .toDate(toDate)
@@ -498,17 +542,26 @@ public class ReportServiceImpl implements ReportService{
 
 //    ============================P&L+BalanceSheet Helper================
 
-    private BigDecimal calculatePeriodBalance(Account account, LocalDate fromDate, LocalDate toDate) {
+    private BigDecimal calculatePeriodBalance(
+            Account account,
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
+        List<JournalStatus> reportStatuses = List.of(
+                JournalStatus.POSTED,
+                JournalStatus.REVERSED
+        );
 
-        List<JournalLine> lines = journalLineRepository
-                .findByAccountIdAndJournalEntry_DateBetweenOrderByJournalEntry_DateAsc(
-                        account.getId(), fromDate, toDate);
+        List<JournalLine> lines =
+                journalLineRepository
+                        .findByAccountIdAndJournalEntry_StatusInAndJournalEntry_DateBetweenOrderByJournalEntry_DateAsc(
+                                account.getId(),
+                                reportStatuses,
+                                fromDate,
+                                toDate
+                        );
 
-        BigDecimal balance = BigDecimal.ZERO;
-        for (JournalLine line : lines) {
-            balance = applySingleLineEffect(account, balance, line);
-        }
-        return balance;
+        return calculateNetEffect(account, lines);
     }
 
 
@@ -614,5 +667,10 @@ public class ReportServiceImpl implements ReportService{
 
         return balance;
 
+    }
+
+    private boolean isLeafAccount(Account account) {
+        return account.getChildren() == null
+                || account.getChildren().isEmpty();
     }
 }

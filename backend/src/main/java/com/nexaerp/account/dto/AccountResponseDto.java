@@ -22,5 +22,6 @@ public class AccountResponseDto {
     private Long parentId;
     private String parentName;
     private BigDecimal currentBalance;
+    private Boolean hasChildren;
     private List<AccountResponseDto> children; //for Tree structure
 }

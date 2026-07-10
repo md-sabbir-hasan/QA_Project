@@ -1,15 +1,16 @@
 <div class="coa-page">
   <section class="finance-hero">
-    <div>
-      <span class="eyebrow">Finance Console</span>
-      <h1>Banking</h1>
-      <p>Manage cash, bank and mobile wallet accounts linked to your Chart of Accounts.</p>
-    </div>
+    <div class="hero-actions">
+      <a class="secondary-btn" routerLink="/banking/transactions">
+        <i class="bi bi-arrow-left-right"></i>
+        View Transactions
+      </a>
 
-    <button class="hero-btn" type="button" (click)="openCreateModal()">
-      <i class="bi bi-plus-circle"></i>
-      New Bank Account
-    </button>
+      <button class="hero-btn" type="button" (click)="openCreateModal()">
+        <i class="bi bi-plus-circle"></i>
+        New Bank Account
+      </button>
+    </div>
   </section>
 
   <section class="metric-grid">
@@ -127,6 +128,9 @@
                   </span>
                 </td>
                 <td class="text-end">
+                  <a class="icon-action" [routerLink]="['/banking/transactions']" [queryParams]="{ bankAccountId: account.id }">
+                    <i class="bi bi-arrow-left-right"></i>
+                  </a>
                   <button class="icon-action edit" type="button" (click)="openEditModal(account)">
                     <i class="bi bi-pencil"></i>
                   </button>

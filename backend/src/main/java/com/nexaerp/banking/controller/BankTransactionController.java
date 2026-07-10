@@ -71,6 +71,14 @@ public class BankTransactionController {
                 bankTransactionService.reconcile(id)));
     }
 
+    @PatchMapping("/{id}/unreconcile")
+    @PreAuthorize("hasAuthority('EDIT_BANKING')")
+    public ResponseEntity<ApiResponse<BankTransactionResponseDto>> unreconcile(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Transaction un-reconciled",
+                bankTransactionService.unreconcile(id)));
+    }
+
     @PatchMapping("/{id}/void")
     @PreAuthorize("hasAuthority('EDIT_BANKING')")
     public ResponseEntity<ApiResponse<BankTransactionResponseDto>> voidTransaction(

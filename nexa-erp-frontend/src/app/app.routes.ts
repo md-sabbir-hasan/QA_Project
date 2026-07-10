@@ -176,6 +176,13 @@ export const routes: Routes = [
             (m) => m.BankAccountList,
           ),
       },
+      {
+        path: 'banking/transactions',
+        loadComponent: () =>
+          import('./features/banking/pages/bank-transaction-list/bank-transaction-list').then(
+            (m) => m.BankTransactionList,
+          ),
+      },
 
       {
         path: 'party',
@@ -210,6 +217,33 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/reports/pages/party-statement-report/party-statement-report').then(
             (m) => m.PartyStatementReport,
+          ),
+      },
+      {
+        path: 'reports/profit-loss',
+        loadComponent: () =>
+          import('./features/reports/pages/profit-loss-report/profit-loss-report').then(
+            (m) => m.ProfitLossReport,
+          ),
+      },
+      {
+        path: 'reports/balance-sheet',
+        loadComponent: () =>
+          import('./features/reports/pages/balance-sheet-report/balance-sheet-report').then(
+            (m) => m.BalanceSheetReport,
+          ),
+      },
+      {
+        path: 'reports/aging',
+        loadComponent: () =>
+          import('./features/reports/pages/aging-report/aging-report').then((m) => m.AgingReport),
+      },
+
+      {
+        path: 'settings',
+        loadComponent: () =>
+          import('./features/settings/pages/settings-list/settings-list').then(
+            (m) => m.SettingsList,
           ),
       },
 

@@ -11,6 +11,7 @@ export interface Account {
   parentId: number | null;
   parentName: string | null;
   currentBalance: number;
+  hasChildren?: boolean;
   children?: Account[];
 }
 

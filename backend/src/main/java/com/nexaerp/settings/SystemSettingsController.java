@@ -26,7 +26,7 @@ public class SystemSettingsController {
     private final AccountRepository accountRepository;
 
     // Get all settings
-    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PreAuthorize("hasAuthority('MANAGE_SETTINGS')")
     @GetMapping
     public ResponseEntity<ApiResponse<List<SettingResponseDto>>> getAll() {
         List<SettingResponseDto> settings = systemSettingRepository.findAll()
@@ -43,22 +43,34 @@ public class SystemSettingsController {
     }
 
     // Update a setting
-    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PreAuthorize("hasAuthority('MANAGE_SETTINGS')")
     @PutMapping("/{key}")
     public ResponseEntity<ApiResponse<SettingResponseDto>> update(
             @PathVariable SettingKey key,
             @Valid @RequestBody SettingUpdateRequestDto request) {
 
-        // Validate account exists and is active
-        Account account = accountRepository.findById(request.getAccountId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Account not found: " + request.getAccountId()));
+        // Only the "default account" group of keys reference an Account row.
+        // Everything else (company name, currency, feature flags, ...) is a
+        // plain value and doesn't need account validation.
+        if (key.isAccountReference()) {
+            Long accountId;
+            try {
+                accountId = Long.parseLong(request.getValue());
+            } catch (NumberFormatException e) {
+                throw new BusinessRuleException(
+                        "Value for " + key + " must be a valid account ID");
+            }
 
-        if (!account.getIsActive()) {
-            throw new BusinessRuleException("Account is not active");
+            Account account = accountRepository.findById(accountId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Account not found: " + accountId));
+
+            if (!account.getIsActive()) {
+                throw new BusinessRuleException("Account is not active");
+            }
         }
 
-        systemSettingsService.updateSetting(key, String.valueOf(request.getAccountId()));
+        systemSettingsService.updateSetting(key, request.getValue());
 
         SystemSetting updated = systemSettingRepository.findByKey(key).get();
 

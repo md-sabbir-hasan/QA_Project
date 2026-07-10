@@ -1,7 +1,7 @@
 package com.nexaerp.settings.dto;
 
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,6 +12,6 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SettingUpdateRequestDto {
-    @NotNull(message = "Account ID is required")
-    private Long accountId;
+    @NotBlank(message = "Value is required")
+    private String value;
 }

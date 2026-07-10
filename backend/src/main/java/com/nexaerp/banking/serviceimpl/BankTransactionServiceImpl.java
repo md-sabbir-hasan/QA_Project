@@ -122,6 +122,26 @@ public class BankTransactionServiceImpl implements BankTransactionService {
 
     @Override
     @Transactional
+    public BankTransactionResponseDto unreconcile(Long id) {
+        BankTransaction transaction = bankTransactionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
+
+        if (Boolean.TRUE.equals(transaction.getVoided())) {
+            throw new BusinessRuleException("Cannot un-reconcile a voided transaction");
+        }
+
+        if (!Boolean.TRUE.equals(transaction.getReconciled())) {
+            throw new BusinessRuleException("Transaction is not reconciled");
+        }
+
+        transaction.setReconciled(false);
+        transaction.setReconciledAt(null);
+
+        return toResponse(bankTransactionRepository.save(transaction));
+    }
+
+    @Override
+    @Transactional
     public BankTransactionResponseDto voidTransaction(Long id) {
         BankTransaction transaction = bankTransactionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
