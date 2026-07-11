@@ -1,13 +1,9 @@
 package com.nexaerp.config;
 
-import com.nexaerp.account.AccountRepository;
 import com.nexaerp.permission.Permission;
 import com.nexaerp.permission.PermissionRepository;
 import com.nexaerp.role.Role;
 import com.nexaerp.role.RoleRepository;
-import com.nexaerp.settings.SettingKey;
-import com.nexaerp.settings.SystemSetting;
-import com.nexaerp.settings.SystemSettingRepository;
 import com.nexaerp.user.User;
 import com.nexaerp.user.UserRepository;
 import com.nexaerp.user.UserStatus;
@@ -30,8 +26,6 @@ public class DataSeeder implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final SystemSettingRepository systemSettingRepository;
-    private final AccountRepository accountRepository;
 
     @Value("${app.default-admin.email}")
     private String adminEmail;
@@ -44,8 +38,11 @@ public class DataSeeder implements CommandLineRunner {
         seedPermissions();
         seedRoles();
         seedAdminUser();
-        seedSystemSettings();
-
+        // Default account mappings (DEFAULT_RECEIVABLE_ACCOUNT etc.) are no
+        // longer auto-seeded here - they depend on the company's own Chart
+        // of Accounts, which doesn't exist yet on a fresh install. They must
+        // be configured once from Settings -> Default Accounts; until then,
+        // any feature that needs one throws a clear "not configured" error.
     }
 
 
@@ -71,7 +68,6 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"CREATE_PARTY", "Create Party", "PARTY"},
                 new Object[]{"EDIT_PARTY", "Edit Party", "PARTY"},
                 new Object[]{"DEACTIVATE_PARTY", "Deactivate Party", "PARTY"},
-                new Object[]{"ACTIVATE_PARTY", "Activate Party", "PARTY"},
 
                 new Object[]{"VIEW_INVOICE", "View Invoice", "INVOICE"},
                 new Object[]{"CREATE_INVOICE", "Create Invoice", "INVOICE"},
@@ -106,8 +102,6 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"VIEW_AUDIT_LOGS", "View Audit Logs", "AUDIT"},
 
                 new Object[]{"MANAGE_SETTINGS", "Manage System Settings", "SETTINGS"}
-
-
         );
 
         for (Object[] p : permissions) {
@@ -148,33 +142,22 @@ public class DataSeeder implements CommandLineRunner {
         createRoleIfNotExists("PURCHASE_MANAGER", "Purchase Manager",
                 permissionRepository.findByModule("VENDOR_BILL"));
 
-        // VIEWER -- all VIEW_ permissions only
+        // VIEWER -- all VIEW_ permissions only, excluding audit trail (sensitive, admin/accountant only)
         createRoleIfNotExists("VIEWER", "Viewer",
                 permissionRepository.findAll().stream()
-                        .filter(p -> p.getCode().startsWith("VIEW_"))
+                        .filter(p -> p.getCode().startsWith("VIEW_") && !p.getModule().equals("AUDIT"))
                         .toList());
     }
 
     private void createRoleIfNotExists(String name, String description,
                                        List<Permission> permissions) {
-
-        Role role = roleRepository.findByName(name)
-                .orElse(null);
-
-        if (role == null) {
+        if (!roleRepository.existsByName(name)) {
             roleRepository.save(Role.builder()
                     .name(name)
                     .description(description)
                     .permissions(new HashSet<>(permissions))
                     .build());
-            return;
         }
-
-        // Existing role হলে নতুন permissions sync করবে
-        role.setDescription(description);
-        role.getPermissions().addAll(permissions);
-
-        roleRepository.save(role);
     }
 
 
@@ -200,51 +183,4 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 
-
-    private void seedSystemSettings() {
-
-        // Find accounts by code and store their IDs
-        saveSettingIfNotExists(
-                SettingKey.DEFAULT_RECEIVABLE_ACCOUNT, "1120",
-                "Default Accounts Receivable account");
-
-        saveSettingIfNotExists(
-                SettingKey.DEFAULT_PAYABLE_ACCOUNT, "2110",
-                "Default Accounts Payable account");
-
-        saveSettingIfNotExists(
-                SettingKey.DEFAULT_SALES_REVENUE, "4100",
-                "Default Sales Revenue account");
-
-        saveSettingIfNotExists(
-                SettingKey.DEFAULT_VAT_PAYABLE, "2120",
-                "Default VAT Payable account");
-
-        saveSettingIfNotExists(
-                SettingKey.DEFAULT_INPUT_VAT, "1130",
-                "Default Input VAT account");
-
-        saveSettingIfNotExists(
-                SettingKey.DEFAULT_TDS_PAYABLE, "2130",
-                "Default TDS Payable account");
-
-        saveSettingIfNotExists(
-                SettingKey.DEFAULT_OPENING_EQUITY, "3100",
-                "Default Opening Balance Equity account");
-    }
-
-    private void saveSettingIfNotExists(SettingKey key,
-                                        String accountCode,
-                                        String description) {
-        if (!systemSettingRepository.existsByKey(key)) {
-            // Find account by code and get its ID
-            accountRepository.findByCode(accountCode).ifPresent(account -> {
-                systemSettingRepository.save(SystemSetting.builder()
-                        .key(key)
-                        .value(String.valueOf(account.getId()))
-                        .description(description)
-                        .build());
-            });
-        }
-    }
 }

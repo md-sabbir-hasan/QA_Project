@@ -110,21 +110,32 @@ export class SettingsList implements OnInit {
   save(row: MappingRow): void {
     if (row.selectedAccountId === null || !this.isDirty(row)) return;
 
-    row.saving = true;
-    this.settingService.updateAccountMapping(row.key, row.selectedAccountId).subscribe({
+    const accountId = row.selectedAccountId;
+    this.patchRow(row.key, { saving: true });
+
+    this.settingService.updateAccountMapping(row.key, accountId).subscribe({
       next: () => {
-        row.currentAccountId = row.selectedAccountId;
-        row.saving = false;
+        this.patchRow(row.key, { saving: false, currentAccountId: accountId });
         this.alertService.success(`${row.label} updated`);
       },
       error: (err) => {
-        row.saving = false;
+        this.patchRow(row.key, { saving: false });
         this.alertService.error(err?.error?.message ?? 'Could not update this setting');
       },
     });
   }
 
   reset(row: MappingRow): void {
-    row.selectedAccountId = row.currentAccountId;
+    this.patchRow(row.key, { selectedAccountId: row.currentAccountId });
+  }
+
+  // mappingRows is a signal, so mutating a property on one of its row
+  // objects in place doesn't notify Angular (no new array reference) - in
+  // a zoneless app that means the UI never re-renders. Always go through
+  // update() and produce a new array/row so the signal actually emits.
+  private patchRow(key: SettingKey, changes: Partial<MappingRow>): void {
+    this.mappingRows.update((rows) =>
+      rows.map((r) => (r.key === key ? { ...r, ...changes } : r)),
+    );
   }
 }

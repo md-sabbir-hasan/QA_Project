@@ -56,15 +56,14 @@ public class SystemSettingsServiceImpl implements SystemSettingsService{
         return systemSettingRepository.findByKey(key)
                 .map(SystemSetting::getValue)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Setting not found: " + key));
+                        key + " is not configured yet. Please set it from Settings > Default Accounts first."));
     }
 
     @Override
     @CacheEvict(value = "systemSettings", allEntries = true)
     public void updateSetting(SettingKey key, String value) {
         SystemSetting setting = systemSettingRepository.findByKey(key)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Setting not found: " + key));
+                .orElseGet(() -> SystemSetting.builder().key(key).build());
 
         String oldValue = setting.getValue();
         setting.setValue(value);
