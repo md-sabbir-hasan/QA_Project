@@ -129,10 +129,7 @@ export class SettingsList implements OnInit {
     this.patchRow(row.key, { selectedAccountId: row.currentAccountId });
   }
 
-  // mappingRows is a signal, so mutating a property on one of its row
-  // objects in place doesn't notify Angular (no new array reference) - in
-  // a zoneless app that means the UI never re-renders. Always go through
-  // update() and produce a new array/row so the signal actually emits.
+  
   private patchRow(key: SettingKey, changes: Partial<MappingRow>): void {
     this.mappingRows.update((rows) =>
       rows.map((r) => (r.key === key ? { ...r, ...changes } : r)),
