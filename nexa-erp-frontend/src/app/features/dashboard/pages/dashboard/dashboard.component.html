@@ -17,6 +17,47 @@
       </button>
     </section>
 
+    <section class="business-grid">
+      <div class="biz-card cash">
+        <div class="biz-icon"><i class="bi bi-wallet2"></i></div>
+        <div>
+          <span>Cash Position</span>
+          <strong>{{ summary()!.business.cashPosition | number:'1.2-2' }}</strong>
+          <small>Across all active bank/cash accounts</small>
+        </div>
+      </div>
+
+      <div class="biz-card receivable">
+        <div class="biz-icon"><i class="bi bi-arrow-down-circle"></i></div>
+        <div>
+          <span>Accounts Receivable</span>
+          <strong>{{ summary()!.business.accountsReceivable | number:'1.2-2' }}</strong>
+          <small>
+            @if (summary()!.business.overdueInvoiceCount > 0) {
+              <span class="overdue-tag">{{ summary()!.business.overdueInvoiceCount }} overdue · {{ summary()!.business.overdueInvoiceAmount | number:'1.2-2' }}</span>
+            } @else {
+              No overdue invoices
+            }
+          </small>
+        </div>
+      </div>
+
+      <div class="biz-card payable">
+        <div class="biz-icon"><i class="bi bi-arrow-up-circle"></i></div>
+        <div>
+          <span>Accounts Payable</span>
+          <strong>{{ summary()!.business.accountsPayable | number:'1.2-2' }}</strong>
+          <small>
+            @if (summary()!.business.overdueBillCount > 0) {
+              <span class="overdue-tag">{{ summary()!.business.overdueBillCount }} overdue · {{ summary()!.business.overdueBillAmount | number:'1.2-2' }}</span>
+            } @else {
+              No overdue bills
+            }
+          </small>
+        </div>
+      </div>
+    </section>
+
     <section class="stats-grid">
       <div class="stat-card">
         <span>Users</span>
@@ -44,6 +85,29 @@
     </section>
 
     <section class="content-grid">
+      <div class="panel trend-panel">
+        <div class="panel-header">
+          <h2>Revenue vs Expense (Last 6 Months)</h2>
+        </div>
+
+        <div class="trend-chart">
+          @for (item of summary()!.business.revenueTrend; track item.month; let i = $index) {
+            <div class="trend-bar-group">
+              <div class="bars">
+                <div class="bar revenue" [style.height.%]="barHeight(item.amount)" [title]="'Revenue: ' + (item.amount | number:'1.2-2')"></div>
+                <div class="bar expense" [style.height.%]="barHeight(summary()!.business.expenseTrend[i].amount)" [title]="'Expense: ' + (summary()!.business.expenseTrend[i].amount | number:'1.2-2')"></div>
+              </div>
+              <span>{{ item.month }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="trend-legend">
+          <span><i class="dot revenue"></i> Revenue</span>
+          <span><i class="dot expense"></i> Expense</span>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-header">
           <h2>User Status</h2>

@@ -13,6 +13,7 @@ public class DashboardSummaryDto {
     private UserSummaryDto users;
     private SecuritySummaryDto security;
     private FinanceSummaryDto finance;
+    private BusinessSummaryDto business;
     private SystemSummaryDto system;
     private HealthSummaryDto health;
     private List<RecentActivityDto> recentActivities;

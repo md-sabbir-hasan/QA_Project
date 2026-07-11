@@ -2,9 +2,30 @@ export interface DashboardSummary {
   users: UserSummary;
   security: SecuritySummary;
   finance: FinanceSummary;
+  business: BusinessSummary;
   system: SystemSummary;
   health: HealthSummary;
   recentActivities: RecentActivity[];
+}
+
+export interface BusinessSummary {
+  cashPosition: number;
+
+  accountsReceivable: number;
+  overdueInvoiceCount: number;
+  overdueInvoiceAmount: number;
+
+  accountsPayable: number;
+  overdueBillCount: number;
+  overdueBillAmount: number;
+
+  revenueTrend: MonthlyTrend[];
+  expenseTrend: MonthlyTrend[];
+}
+
+export interface MonthlyTrend {
+  month: string;
+  amount: number;
 }
 
 export interface UserSummary {
