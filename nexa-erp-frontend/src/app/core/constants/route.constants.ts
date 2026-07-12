@@ -19,5 +19,8 @@ export const APP_ROUTES = {
   LEDGER: '/reports/ledger',
   TRIAL_BALANCE: '/reports/trial-balance',
 
-  AUDIT: '/audit'
+  AUDIT: '/audit',
+
+  FISCAL_YEAR: '/fiscal-years',
+  ACCOUNTING_PERIOD: '/accounting-periods',
 } as const;

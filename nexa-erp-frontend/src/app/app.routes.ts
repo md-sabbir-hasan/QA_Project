@@ -65,6 +65,21 @@ export const routes: Routes = [
       },
 
       {
+        path: 'fiscal-years',
+        loadComponent: () =>
+          import(
+            './features/fiscal-year/pages/fiscal-year-list/fiscal-year-list'
+          ).then((m) => m.FiscalYearList),
+      },
+      {
+        path: 'accounting-periods',
+        loadComponent: () =>
+          import(
+            './features/accounting-period/pages/accounting-period-list/accounting-period-list'
+          ).then((m) => m.AccountingPeriodList),
+      },
+
+      {
         path: 'accounts',
         loadComponent: () =>
           import('./features/accounts/pages/account-list/account-list').then((m) => m.AccountList),
@@ -246,6 +261,7 @@ export const routes: Routes = [
             (m) => m.SettingsList,
           ),
       },
+
 
       {
         path: '',

@@ -9,7 +9,7 @@ import { TokenService } from './token.service';
 })
 export class MenuService {
 
-  constructor(private tokenService: TokenService) {}
+  constructor(private tokenService: TokenService) { }
 
   getMenu(): AppMenuItem[] {
 
@@ -61,6 +61,18 @@ export class MenuService {
         label: 'Finance',
         icon: 'bi-cash-coin',
         children: [
+          {
+            label: 'Fiscal Years',
+            icon: 'bi-calendar-range',
+            route: APP_ROUTES.FISCAL_YEAR,
+            permission: PERMISSIONS.VIEW_FISCAL_YEAR,
+          },
+          {
+            label: 'Accounting Periods',
+            icon: 'bi-calendar3',
+            route: APP_ROUTES.ACCOUNTING_PERIOD,
+            permission: PERMISSIONS.VIEW_ACCOUNTING_PERIOD,
+          },
 
           {
             label: 'Chart of Accounts',

@@ -101,8 +101,49 @@ public class DataSeeder implements CommandLineRunner {
 
                 new Object[]{"VIEW_AUDIT_LOGS", "View Audit Logs", "AUDIT"},
 
-                new Object[]{"MANAGE_SETTINGS", "Manage System Settings", "SETTINGS"}
-        );
+                new Object[]{"MANAGE_SETTINGS", "Manage System Settings", "SETTINGS"},
+
+                // Fiscal_Year
+                new Object[]{"VIEW_FISCAL_YEAR", "View Fiscal Year", "FISCAL_YEAR"},
+                new Object[]{"CREATE_FISCAL_YEAR", "Create Fiscal Year", "FISCAL_YEAR"},
+                new Object[]{"EDIT_FISCAL_YEAR", "Edit Fiscal Year", "FISCAL_YEAR"},
+                new Object[]{"ACTIVATE_FISCAL_YEAR", "Activate Fiscal Year", "FISCAL_YEAR"},
+                new Object[]{"CLOSE_FISCAL_YEAR", "Close Fiscal Year", "FISCAL_YEAR"},
+                new Object[]{"DELETE_FISCAL_YEAR", "Delete Fiscal Year", "FISCAL_YEAR"
+                },
+
+                //ACCOUNTING_PERIOD
+                new Object[]{
+                        "VIEW_ACCOUNTING_PERIOD",
+                        "View Accounting Period",
+                        "ACCOUNTING_PERIOD"
+                },
+                new Object[]{
+                        "CREATE_ACCOUNTING_PERIOD",
+                        "Create Accounting Period",
+                        "ACCOUNTING_PERIOD"
+                },
+                new Object[]{
+                        "EDIT_ACCOUNTING_PERIOD",
+                        "Edit Accounting Period",
+                        "ACCOUNTING_PERIOD"
+                },
+                new Object[]{
+                        "OPEN_ACCOUNTING_PERIOD",
+                        "Open Accounting Period",
+                        "ACCOUNTING_PERIOD"
+                },
+                new Object[]{
+                        "CLOSE_ACCOUNTING_PERIOD",
+                        "Close Accounting Period",
+                        "ACCOUNTING_PERIOD"
+                },
+                new Object[]{
+                        "DELETE_ACCOUNTING_PERIOD",
+                        "Delete Accounting Period",
+                        "ACCOUNTING_PERIOD"
+                }
+                );
 
         for (Object[] p : permissions) {
             String code = (String) p[0];
@@ -122,31 +163,48 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedRoles() {
 
-        // SUPER_ADMIN -- all permissions
-        createRoleIfNotExists("SUPER_ADMIN", "Super Administrator",
-                permissionRepository.findAll());
+        syncSuperAdminRole();
 
-        // ACCOUNTANT -- all except user management
-        createRoleIfNotExists("ACCOUNTANT", "Accountant",
+        createRoleIfNotExists(
+                "ACCOUNTANT",
+                "Accountant",
                 permissionRepository.findAll().stream()
-                        .filter(p -> !p.getModule().equals("USER_MANAGEMENT"))
-                        .toList());
+                        .filter(permission ->
+                                !"USER_MANAGEMENT".equals(permission.getModule())
+                        )
+                        .toList()
+        );
 
-        // SALES_MANAGER
-        createRoleIfNotExists("SALES_MANAGER", "Sales Manager",
+        createRoleIfNotExists(
+                "SALES_MANAGER",
+                "Sales Manager",
                 permissionRepository.findByModule("PARTY").stream()
-                        .filter(p -> List.of("VIEW_PARTY", "CREATE_PARTY", "EDIT_PARTY").contains(p.getCode()))
-                        .toList());
+                        .filter(permission ->
+                                List.of(
+                                        "VIEW_PARTY",
+                                        "CREATE_PARTY",
+                                        "EDIT_PARTY"
+                                ).contains(permission.getCode())
+                        )
+                        .toList()
+        );
 
-        // PURCHASE_MANAGER
-        createRoleIfNotExists("PURCHASE_MANAGER", "Purchase Manager",
-                permissionRepository.findByModule("VENDOR_BILL"));
+        createRoleIfNotExists(
+                "PURCHASE_MANAGER",
+                "Purchase Manager",
+                permissionRepository.findByModule("VENDOR_BILL")
+        );
 
-        // VIEWER -- all VIEW_ permissions only, excluding audit trail (sensitive, admin/accountant only)
-        createRoleIfNotExists("VIEWER", "Viewer",
+        createRoleIfNotExists(
+                "VIEWER",
+                "Viewer",
                 permissionRepository.findAll().stream()
-                        .filter(p -> p.getCode().startsWith("VIEW_") && !p.getModule().equals("AUDIT"))
-                        .toList());
+                        .filter(permission ->
+                                permission.getCode().startsWith("VIEW_")
+                                        && !"AUDIT".equals(permission.getModule())
+                        )
+                        .toList()
+        );
     }
 
     private void createRoleIfNotExists(String name, String description,
@@ -181,6 +239,24 @@ public class DataSeeder implements CommandLineRunner {
                     .roles(roles)
                     .build());
         }
+    }
+    // all role add+update
+    private void syncSuperAdminRole() {
+        Role role = roleRepository.findByName("SUPER_ADMIN")
+                .orElseGet(() -> Role.builder()
+                        .name("SUPER_ADMIN")
+                        .description("Super Administrator")
+                        .permissions(new HashSet<>())
+                        .build()
+                );
+
+        if (role.getPermissions() == null) {
+            role.setPermissions(new HashSet<>());
+        }
+
+        role.getPermissions().addAll(permissionRepository.findAll());
+
+        roleRepository.save(role);
     }
 
 }
