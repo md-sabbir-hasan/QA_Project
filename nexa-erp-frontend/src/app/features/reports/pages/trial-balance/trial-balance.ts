@@ -5,6 +5,11 @@ import { FormsModule } from '@angular/forms';
 import { AlertService } from '../../../../core/services/alert.service';
 import { TrialBalanceResponse } from '../../models/trial-balance.model';
 import { ReportService } from '../../services/report.service';
+import {
+  EXCEL_MIME_TYPE,
+  extractBlobErrorMessage,
+  triggerBlobDownload,
+} from '../../../../core/utils/file-download.util';
 
 @Component({
   selector: 'app-trial-balance',
@@ -63,6 +68,25 @@ export class TrialBalance implements OnInit {
   }
 
   exportReport(): void {
-    this.alert.warning('Export feature will be available soon.');
+    if (!this.report()) {
+      this.alert.error('Generate the trial balance before exporting');
+      return;
+    }
+
+    this.reportService.downloadTrialBalanceExcel(this.asOfDate).subscribe({
+      next: (blob) => {
+        if (!blob || blob.size === 0) {
+          this.alert.error('Generated Excel file is empty');
+          return;
+        }
+
+        triggerBlobDownload(blob, `trial-balance-${this.asOfDate}.xlsx`, EXCEL_MIME_TYPE);
+      },
+      error: async (error) => {
+        this.alert.error(
+          await extractBlobErrorMessage(error, 'Failed to export trial balance to Excel'),
+        );
+      },
+    });
   }
 }

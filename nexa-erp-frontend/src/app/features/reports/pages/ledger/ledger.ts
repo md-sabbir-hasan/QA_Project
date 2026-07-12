@@ -6,6 +6,11 @@ import { Account } from '../../../accounts/models/account.model';
 import { AccountService } from '../../../accounts/services/account.service';
 import { LedgerResponse } from '../../models/ledger.model';
 import { ReportService } from '../../services/report.service';
+import {
+  EXCEL_MIME_TYPE,
+  extractBlobErrorMessage,
+  triggerBlobDownload,
+} from '../../../../core/utils/file-download.util';
 
 @Component({
   selector: 'app-ledger',
@@ -100,7 +105,28 @@ export class Ledger implements OnInit {
   }
 
   exportReport(): void {
-    this.alert.warning('Export feature will be added later');
+    if (!this.accountId || !this.ledger()) {
+      this.alert.error('Generate the ledger before exporting');
+      return;
+    }
+
+    this.reportService.downloadLedgerExcel(this.accountId, this.fromDate, this.toDate).subscribe({
+      next: (blob) => {
+        if (!blob || blob.size === 0) {
+          this.alert.error('Generated Excel file is empty');
+          return;
+        }
+
+        triggerBlobDownload(
+          blob,
+          `ledger-${this.accountId}-${this.fromDate}-${this.toDate}.xlsx`,
+          EXCEL_MIME_TYPE,
+        );
+      },
+      error: async (error) => {
+        this.alert.error(await extractBlobErrorMessage(error, 'Failed to export ledger to Excel'));
+      },
+    });
   }
 
   refreshReport(): void {
@@ -108,6 +134,4 @@ export class Ledger implements OnInit {
       this.generateReport();
     }
   }
-
-  
 }

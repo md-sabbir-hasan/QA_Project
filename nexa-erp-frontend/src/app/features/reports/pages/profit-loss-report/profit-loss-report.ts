@@ -2,7 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-
+import {
+  EXCEL_MIME_TYPE,
+  extractBlobErrorMessage,
+  triggerBlobDownload,
+} from '../../../../core/utils/file-download.util';
 import { AlertService } from '../../../../core/services/alert.service';
 import { ProfitLossResponse } from '../../models/profit-loss.model';
 import { ReportService } from '../../services/report.service';
@@ -95,5 +99,29 @@ export class ProfitLossReport implements OnInit {
     }
 
     return 'neutral';
+  }
+  exportReport(): void {
+    if (!this.report()) {
+      this.alert.error('Generate the report before exporting');
+      return;
+    }
+
+    this.reportService.downloadProfitLossExcel(this.fromDate(), this.toDate()).subscribe({
+      next: (blob) => {
+        if (!blob || blob.size === 0) {
+          this.alert.error('Generated Excel file is empty');
+          return;
+        }
+
+        triggerBlobDownload(
+          blob,
+          `profit-and-loss-${this.fromDate()}-${this.toDate()}.xlsx`,
+          EXCEL_MIME_TYPE,
+        );
+      },
+      error: async (error) => {
+        this.alert.error(await extractBlobErrorMessage(error, 'Failed to export P&L to Excel'));
+      },
+    });
   }
 }

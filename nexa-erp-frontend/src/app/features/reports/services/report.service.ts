@@ -95,4 +95,60 @@ export class ReportService {
       params,
     });
   }
+
+  // ==== Excel exports ====
+
+  downloadLedgerExcel(accountId: number, fromDate: string, toDate: string): Observable<Blob> {
+    const params = new HttpParams()
+      .set('accountId', accountId.toString())
+      .set('fromDate', fromDate)
+      .set('toDate', toDate);
+
+    return this.http.get(`${this.baseUrl}/ledger/excel`, { params, responseType: 'blob' as const });
+  }
+
+  downloadTrialBalanceExcel(asOfDate: string): Observable<Blob> {
+    const params = new HttpParams().set('asOfDate', asOfDate);
+
+    return this.http.get(`${this.baseUrl}/trial-balance/excel`, {
+      params,
+      responseType: 'blob' as const,
+    });
+  }
+
+  downloadProfitLossExcel(fromDate: string, toDate: string): Observable<Blob> {
+    const params = new HttpParams().set('fromDate', fromDate).set('toDate', toDate);
+
+    return this.http.get(`${this.baseUrl}/profit-loss/excel`, {
+      params,
+      responseType: 'blob' as const,
+    });
+  }
+
+  downloadBalanceSheetExcel(asOfDate: string): Observable<Blob> {
+    const params = new HttpParams().set('asOfDate', asOfDate);
+
+    return this.http.get(`${this.baseUrl}/balance-sheet/excel`, {
+      params,
+      responseType: 'blob' as const,
+    });
+  }
+
+  downloadPartyStatementExcel(partyId: number, fromDate: string, toDate: string): Observable<Blob> {
+    const params = new HttpParams()
+      .set('partyId', partyId.toString())
+      .set('fromDate', fromDate)
+      .set('toDate', toDate);
+
+    return this.http.get(`${this.baseUrl}/party-statement/excel`, {
+      params,
+      responseType: 'blob' as const,
+    });
+  }
+
+  downloadAgingExcel(partyType: 'CUSTOMER' | 'VENDOR', asOfDate: string): Observable<Blob> {
+    const params = new HttpParams().set('partyType', partyType).set('asOfDate', asOfDate);
+
+    return this.http.get(`${this.baseUrl}/aging/excel`, { params, responseType: 'blob' as const });
+  }
 }
