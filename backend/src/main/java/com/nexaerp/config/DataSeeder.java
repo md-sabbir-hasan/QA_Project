@@ -64,6 +64,15 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"REVERSE_JOURNAL", "Reverse Journal", "JOURNAL"},
                 new Object[]{"DELETE_JOURNAL", "Delete Journal", "JOURNAL"},
 
+                //credit note
+                new Object[]{"VIEW_CREDIT_NOTE", "View Credit Note", "CREDIT_NOTE"},
+                new Object[]{"CREATE_CREDIT_NOTE", "Create Credit Note", "CREDIT_NOTE"},
+                new Object[]{"EDIT_CREDIT_NOTE", "Edit Credit Note", "CREDIT_NOTE"},
+                new Object[]{"APPROVE_CREDIT_NOTE", "Approve Credit Note", "CREDIT_NOTE"},
+                new Object[]{"POST_CREDIT_NOTE", "Post Credit Note", "CREDIT_NOTE"},
+                new Object[]{"CANCEL_CREDIT_NOTE", "Cancel Credit Note", "CREDIT_NOTE"},
+                new Object[]{"DELETE_CREDIT_NOTE", "Delete Credit Note", "CREDIT_NOTE"},
+
                 new Object[]{"VIEW_PARTY", "View Party", "PARTY"},
                 new Object[]{"CREATE_PARTY", "Create Party", "PARTY"},
                 new Object[]{"EDIT_PARTY", "Edit Party", "PARTY"},
@@ -109,40 +118,15 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"EDIT_FISCAL_YEAR", "Edit Fiscal Year", "FISCAL_YEAR"},
                 new Object[]{"ACTIVATE_FISCAL_YEAR", "Activate Fiscal Year", "FISCAL_YEAR"},
                 new Object[]{"CLOSE_FISCAL_YEAR", "Close Fiscal Year", "FISCAL_YEAR"},
-                new Object[]{"DELETE_FISCAL_YEAR", "Delete Fiscal Year", "FISCAL_YEAR"
-                },
+                new Object[]{"DELETE_FISCAL_YEAR", "Delete Fiscal Year", "FISCAL_YEAR",},
 
                 //ACCOUNTING_PERIOD
-                new Object[]{
-                        "VIEW_ACCOUNTING_PERIOD",
-                        "View Accounting Period",
-                        "ACCOUNTING_PERIOD"
-                },
-                new Object[]{
-                        "CREATE_ACCOUNTING_PERIOD",
-                        "Create Accounting Period",
-                        "ACCOUNTING_PERIOD"
-                },
-                new Object[]{
-                        "EDIT_ACCOUNTING_PERIOD",
-                        "Edit Accounting Period",
-                        "ACCOUNTING_PERIOD"
-                },
-                new Object[]{
-                        "OPEN_ACCOUNTING_PERIOD",
-                        "Open Accounting Period",
-                        "ACCOUNTING_PERIOD"
-                },
-                new Object[]{
-                        "CLOSE_ACCOUNTING_PERIOD",
-                        "Close Accounting Period",
-                        "ACCOUNTING_PERIOD"
-                },
-                new Object[]{
-                        "DELETE_ACCOUNTING_PERIOD",
-                        "Delete Accounting Period",
-                        "ACCOUNTING_PERIOD"
-                }
+                new Object[]{"VIEW_ACCOUNTING_PERIOD", "View Accounting Period", "ACCOUNTING_PERIOD"},
+                new Object[]{"CREATE_ACCOUNTING_PERIOD", "Create Accounting Period", "ACCOUNTING_PERIOD"},
+                new Object[]{"EDIT_ACCOUNTING_PERIOD", "Edit Accounting Period", "ACCOUNTING_PERIOD"},
+                new Object[]{"OPEN_ACCOUNTING_PERIOD", "Open Accounting Period", "ACCOUNTING_PERIOD"},
+                new Object[]{"CLOSE_ACCOUNTING_PERIOD", "Close Accounting Period", "ACCOUNTING_PERIOD"},
+                new Object[]{"DELETE_ACCOUNTING_PERIOD", "Delete Accounting Period", "ACCOUNTING_PERIOD"}
                 );
 
         for (Object[] p : permissions) {

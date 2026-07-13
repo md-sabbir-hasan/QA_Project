@@ -1,5 +1,6 @@
 package com.nexaerp.journal;
 
+import com.nexaerp.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -14,7 +15,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class JournalEntry {
+public class JournalEntry extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

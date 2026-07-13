@@ -11,6 +11,7 @@ import com.nexaerp.journal.*;
 import com.nexaerp.party.Party;
 import com.nexaerp.party.PartyRepository;
 import com.nexaerp.party.PartyType;
+import com.nexaerp.security.MakerCheckerService;
 import com.nexaerp.settings.SettingKey;
 import com.nexaerp.settings.SystemSettingsService;
 import com.nexaerp.vendorbill.dto.VendorBillItemRequestDto;
@@ -43,6 +44,7 @@ public class VendorBillServiceImpl implements VendorBillService {
     private final SystemSettingsService systemSettingsService;
     private final AuditLogService auditLogService;
     private final AccountingPeriodService accountingPeriodService;
+    private final MakerCheckerService makerCheckerService;
 
 
     @Override
@@ -188,6 +190,11 @@ public class VendorBillServiceImpl implements VendorBillService {
             throw new BusinessRuleException("Only DRAFT bills can be approved");
         }
 
+        makerCheckerService.validateChecker(
+                bill.getCreatedBy(),
+                "Vendor Bill"
+        );
+
         VendorBillStatus oldStatus = bill.getStatus();
 
         bill.setStatus(VendorBillStatus.APPROVED);
@@ -238,6 +245,11 @@ public class VendorBillServiceImpl implements VendorBillService {
         }
 
         VendorBillStatus oldStatus = bill.getStatus();
+
+        makerCheckerService.validateChecker(
+                bill.getCreatedBy(),
+                "Vendor Bill"
+        );
 
         /*
          * Validate Accounting Period before:

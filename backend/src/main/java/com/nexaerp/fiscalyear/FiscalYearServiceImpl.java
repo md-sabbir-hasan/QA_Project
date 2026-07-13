@@ -6,10 +6,8 @@ import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.fiscalyear.dto.FiscalYearRequestDto;
 import com.nexaerp.fiscalyear.dto.FiscalYearResponseDto;
-import com.nexaerp.user.UserRepository;
+import com.nexaerp.security.CurrentUserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,16 +21,28 @@ public class FiscalYearServiceImpl implements FiscalYearService {
 
     private final FiscalYearRepository fiscalYearRepository;
     private final AuditLogService auditLogService;
-    private final UserRepository userRepository;
+    private final CurrentUserService currentUserService;
 
     @Override
     @Transactional
     public FiscalYearResponseDto create(FiscalYearRequestDto request) {
-        validateNameForCreate(request.getName());
-        validateDateRange(request.getStartDate(), request.getEndDate());
 
-        if (fiscalYearRepository.existsOverlappingPeriod(request.getStartDate(), request.getEndDate())) {
-            throw new BusinessRuleException("Fiscal year date range overlaps an existing fiscal year");
+        validateNameForCreate(request.getName());
+        validateDateRange(
+                request.getStartDate(),
+                request.getEndDate()
+        );
+
+        boolean overlaps =
+                fiscalYearRepository.existsOverlappingPeriod(
+                        request.getStartDate(),
+                        request.getEndDate()
+                );
+
+        if (overlaps) {
+            throw new BusinessRuleException(
+                    "Fiscal year date range overlaps an existing fiscal year"
+            );
         }
 
         FiscalYear fiscalYear = FiscalYear.builder()
@@ -43,7 +53,8 @@ public class FiscalYearServiceImpl implements FiscalYearService {
                 .description(trimToNull(request.getDescription()))
                 .build();
 
-        FiscalYear saved = fiscalYearRepository.save(fiscalYear);
+        FiscalYear saved =
+                fiscalYearRepository.save(fiscalYear);
 
         auditLogService.log(
                 AuditAction.CREATED,
@@ -58,33 +69,64 @@ public class FiscalYearServiceImpl implements FiscalYearService {
 
     @Override
     @Transactional
-    public FiscalYearResponseDto update(Long id, FiscalYearRequestDto request) {
+    public FiscalYearResponseDto update(
+            Long id,
+            FiscalYearRequestDto request
+    ) {
+
         FiscalYear fiscalYear = findActiveRecord(id);
 
         if (fiscalYear.getStatus() == FiscalYearStatus.CLOSED) {
-            throw new BusinessRuleException("Closed fiscal year cannot be updated");
+            throw new BusinessRuleException(
+                    "Closed fiscal year cannot be updated"
+            );
         }
 
         validateNameForUpdate(request.getName(), id);
-        validateDateRange(request.getStartDate(), request.getEndDate());
+        validateDateRange(
+                request.getStartDate(),
+                request.getEndDate()
+        );
 
-        if (fiscalYearRepository.existsOverlappingPeriodExcludingId(
-                id, request.getStartDate(), request.getEndDate())) {
-            throw new BusinessRuleException("Fiscal year date range overlaps an existing fiscal year");
+        boolean overlaps =
+                fiscalYearRepository
+                        .existsOverlappingPeriodExcludingId(
+                                id,
+                                request.getStartDate(),
+                                request.getEndDate()
+                        );
+
+        if (overlaps) {
+            throw new BusinessRuleException(
+                    "Fiscal year date range overlaps an existing fiscal year"
+            );
         }
 
-        String oldValue = fiscalYear.getName() + " [" + fiscalYear.getStartDate()
-                + " to " + fiscalYear.getEndDate() + "]";
+        String oldValue =
+                fiscalYear.getName()
+                        + " ["
+                        + fiscalYear.getStartDate()
+                        + " to "
+                        + fiscalYear.getEndDate()
+                        + "]";
 
         fiscalYear.setName(request.getName().trim());
         fiscalYear.setStartDate(request.getStartDate());
         fiscalYear.setEndDate(request.getEndDate());
-        fiscalYear.setDescription(trimToNull(request.getDescription()));
+        fiscalYear.setDescription(
+                trimToNull(request.getDescription())
+        );
 
-        FiscalYear saved = fiscalYearRepository.save(fiscalYear);
+        FiscalYear saved =
+                fiscalYearRepository.save(fiscalYear);
 
-        String newValue = saved.getName() + " [" + saved.getStartDate()
-                + " to " + saved.getEndDate() + "]";
+        String newValue =
+                saved.getName()
+                        + " ["
+                        + saved.getStartDate()
+                        + " to "
+                        + saved.getEndDate()
+                        + "]";
 
         auditLogService.log(
                 AuditAction.UPDATED,
@@ -106,7 +148,9 @@ public class FiscalYearServiceImpl implements FiscalYearService {
     @Override
     @Transactional(readOnly = true)
     public List<FiscalYearResponseDto> getAll() {
-        return fiscalYearRepository.findByDeletedAtIsNullOrderByStartDateDesc()
+
+        return fiscalYearRepository
+                .findByDeletedAtIsNullOrderByStartDateDesc()
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -115,61 +159,95 @@ public class FiscalYearServiceImpl implements FiscalYearService {
     @Override
     @Transactional(readOnly = true)
     public FiscalYearResponseDto getActive() {
-        FiscalYear fiscalYear = fiscalYearRepository
-                .findFirstByStatusAndDeletedAtIsNull(FiscalYearStatus.ACTIVE)
-                .orElseThrow(() -> new ResourceNotFoundException("No active fiscal year found"));
+
+        FiscalYear fiscalYear =
+                fiscalYearRepository
+                        .findFirstByStatusAndDeletedAtIsNull(
+                                FiscalYearStatus.ACTIVE
+                        )
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "No active fiscal year found"
+                                )
+                        );
+
         return toResponse(fiscalYear);
     }
 
     @Override
     @Transactional(readOnly = true)
     public FiscalYearResponseDto getByDate(LocalDate date) {
+
         if (date == null) {
-            throw new BusinessRuleException("Date is required");
+            throw new BusinessRuleException(
+                    "Date is required"
+            );
         }
 
-        List<FiscalYear> matches = fiscalYearRepository.findContainingDate(date);
+        List<FiscalYear> matches =
+                fiscalYearRepository.findContainingDate(date);
+
         if (matches.isEmpty()) {
-            throw new ResourceNotFoundException("No fiscal year found for date " + date);
+            throw new ResourceNotFoundException(
+                    "No fiscal year found for date " + date
+            );
         }
+
         if (matches.size() > 1) {
-            throw new BusinessRuleException("Multiple fiscal years contain date " + date);
+            throw new BusinessRuleException(
+                    "Multiple fiscal years contain date " + date
+            );
         }
+
         return toResponse(matches.getFirst());
     }
 
     @Override
     @Transactional
     public FiscalYearResponseDto activate(Long id) {
+
         FiscalYear fiscalYear = findActiveRecord(id);
 
         if (fiscalYear.getStatus() == FiscalYearStatus.ACTIVE) {
-            throw new BusinessRuleException("Fiscal year is already active");
+            throw new BusinessRuleException(
+                    "Fiscal year is already active"
+            );
         }
+
         if (fiscalYear.getStatus() == FiscalYearStatus.CLOSED) {
-            throw new BusinessRuleException("Closed fiscal year cannot be activated");
+            throw new BusinessRuleException(
+                    "Closed fiscal year cannot be activated"
+            );
         }
 
         fiscalYearRepository
-                .findFirstByStatusAndDeletedAtIsNull(FiscalYearStatus.ACTIVE)
+                .findFirstByStatusAndDeletedAtIsNull(
+                        FiscalYearStatus.ACTIVE
+                )
                 .ifPresent(active -> {
                     throw new BusinessRuleException(
-                            "Another fiscal year is already active: " + active.getName()
+                            "Another fiscal year is already active: "
+                                    + active.getName()
                     );
                 });
 
+        FiscalYearStatus oldStatus = fiscalYear.getStatus();
+
         fiscalYear.setStatus(FiscalYearStatus.ACTIVE);
         fiscalYear.setActivatedAt(LocalDateTime.now());
-        fiscalYear.setActivatedBy(getCurrentUserId());
+        fiscalYear.setActivatedBy(
+                currentUserService.getCurrentUserId()
+        );
 
-        FiscalYear saved = fiscalYearRepository.save(fiscalYear);
+        FiscalYear saved =
+                fiscalYearRepository.save(fiscalYear);
 
         auditLogService.log(
                 AuditAction.ACTIVATED,
                 "FISCAL_YEAR",
                 saved.getId(),
-                "DRAFT",
-                "ACTIVE"
+                oldStatus.name(),
+                FiscalYearStatus.ACTIVE.name()
         );
 
         return toResponse(saved);
@@ -178,28 +256,36 @@ public class FiscalYearServiceImpl implements FiscalYearService {
     @Override
     @Transactional
     public FiscalYearResponseDto close(Long id) {
+
         FiscalYear fiscalYear = findActiveRecord(id);
 
         if (fiscalYear.getStatus() == FiscalYearStatus.CLOSED) {
-            throw new BusinessRuleException("Fiscal year is already closed");
-        }
-        if (fiscalYear.getStatus() != FiscalYearStatus.ACTIVE) {
-            throw new BusinessRuleException("Only an ACTIVE fiscal year can be closed");
+            throw new BusinessRuleException(
+                    "Fiscal year is already closed"
+            );
         }
 
-        // Accounting Period feature will later validate that every period is closed.
+        if (fiscalYear.getStatus() != FiscalYearStatus.ACTIVE) {
+            throw new BusinessRuleException(
+                    "Only an ACTIVE fiscal year can be closed"
+            );
+        }
+
         fiscalYear.setStatus(FiscalYearStatus.CLOSED);
         fiscalYear.setClosedAt(LocalDateTime.now());
-        fiscalYear.setClosedBy(getCurrentUserId());
+        fiscalYear.setClosedBy(
+                currentUserService.getCurrentUserId()
+        );
 
-        FiscalYear saved = fiscalYearRepository.save(fiscalYear);
+        FiscalYear saved =
+                fiscalYearRepository.save(fiscalYear);
 
         auditLogService.log(
                 AuditAction.CLOSED,
                 "FISCAL_YEAR",
                 saved.getId(),
-                "ACTIVE",
-                "CLOSED"
+                FiscalYearStatus.ACTIVE.name(),
+                FiscalYearStatus.CLOSED.name()
         );
 
         return toResponse(saved);
@@ -208,75 +294,124 @@ public class FiscalYearServiceImpl implements FiscalYearService {
     @Override
     @Transactional
     public void delete(Long id) {
+
         FiscalYear fiscalYear = findActiveRecord(id);
 
         if (fiscalYear.getStatus() != FiscalYearStatus.DRAFT) {
-            throw new BusinessRuleException("Only DRAFT fiscal years can be deleted");
+            throw new BusinessRuleException(
+                    "Only DRAFT fiscal years can be deleted"
+            );
         }
 
         fiscalYear.setDeletedAt(LocalDateTime.now());
-        fiscalYearRepository.save(fiscalYear);
+
+        FiscalYear saved =
+                fiscalYearRepository.save(fiscalYear);
 
         auditLogService.log(
                 AuditAction.DELETED,
                 "FISCAL_YEAR",
-                fiscalYear.getId(),
-                fiscalYear.getName(),
+                saved.getId(),
+                saved.getName(),
                 null
         );
     }
 
     private FiscalYear findActiveRecord(Long id) {
-        return fiscalYearRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Fiscal year not found"));
+
+        return fiscalYearRepository
+                .findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Fiscal year not found"
+                        )
+                );
     }
 
     private void validateNameForCreate(String name) {
-        String normalized = name == null ? "" : name.trim();
+
+        String normalized =
+                name == null ? "" : name.trim();
+
         if (normalized.isBlank()) {
-            throw new BusinessRuleException("Fiscal year name is required");
+            throw new BusinessRuleException(
+                    "Fiscal year name is required"
+            );
         }
-        if (fiscalYearRepository.existsByNameIgnoreCaseAndDeletedAtIsNull(normalized)) {
-            throw new BusinessRuleException("Fiscal year name already exists");
+
+        boolean exists =
+                fiscalYearRepository
+                        .existsByNameIgnoreCaseAndDeletedAtIsNull(
+                                normalized
+                        );
+
+        if (exists) {
+            throw new BusinessRuleException(
+                    "Fiscal year name already exists"
+            );
         }
     }
 
-    private void validateNameForUpdate(String name, Long id) {
-        String normalized = name == null ? "" : name.trim();
+    private void validateNameForUpdate(
+            String name,
+            Long id
+    ) {
+
+        String normalized =
+                name == null ? "" : name.trim();
+
         if (normalized.isBlank()) {
-            throw new BusinessRuleException("Fiscal year name is required");
+            throw new BusinessRuleException(
+                    "Fiscal year name is required"
+            );
         }
-        if (fiscalYearRepository.existsByNameIgnoreCaseAndIdNotAndDeletedAtIsNull(normalized, id)) {
-            throw new BusinessRuleException("Fiscal year name already exists");
+
+        boolean exists =
+                fiscalYearRepository
+                        .existsByNameIgnoreCaseAndIdNotAndDeletedAtIsNull(
+                                normalized,
+                                id
+                        );
+
+        if (exists) {
+            throw new BusinessRuleException(
+                    "Fiscal year name already exists"
+            );
         }
     }
 
-    private void validateDateRange(LocalDate startDate, LocalDate endDate) {
+    private void validateDateRange(
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+
         if (startDate == null || endDate == null) {
-            throw new BusinessRuleException("Fiscal year start date and end date are required");
+            throw new BusinessRuleException(
+                    "Fiscal year start date and end date are required"
+            );
         }
+
         if (!endDate.isAfter(startDate)) {
-            throw new BusinessRuleException("Fiscal year end date must be after start date");
+            throw new BusinessRuleException(
+                    "Fiscal year end date must be after start date"
+            );
         }
     }
 
-    private Long getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()
-                || "anonymousUser".equals(authentication.getPrincipal())) {
-            return null;
-        }
+    private FiscalYearResponseDto toResponse(
+            FiscalYear fiscalYear
+    ) {
 
-        return userRepository.findByEmail(authentication.getName())
-                .map(user -> user.getId())
-                .orElse(null);
-    }
-
-    private FiscalYearResponseDto toResponse(FiscalYear fiscalYear) {
         LocalDate today = LocalDate.now();
-        boolean current = fiscalYear.getStatus() == FiscalYearStatus.ACTIVE
-                && !today.isBefore(fiscalYear.getStartDate())
-                && !today.isAfter(fiscalYear.getEndDate());
+
+        boolean current =
+                fiscalYear.getStatus() == FiscalYearStatus.ACTIVE
+                        && !today.isBefore(
+                        fiscalYear.getStartDate()
+                )
+                        && !today.isAfter(
+                        fiscalYear.getEndDate()
+                );
 
         return FiscalYearResponseDto.builder()
                 .id(fiscalYear.getId())
@@ -296,9 +431,11 @@ public class FiscalYearServiceImpl implements FiscalYearService {
     }
 
     private String trimToNull(String value) {
+
         if (value == null || value.isBlank()) {
             return null;
         }
+
         return value.trim();
     }
 }

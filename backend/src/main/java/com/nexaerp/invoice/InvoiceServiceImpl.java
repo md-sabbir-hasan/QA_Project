@@ -14,6 +14,7 @@ import com.nexaerp.invoice.dto.InvoiceResponseDto;
 import com.nexaerp.journal.*;
 import com.nexaerp.party.Party;
 import com.nexaerp.party.PartyRepository;
+import com.nexaerp.security.MakerCheckerService;
 import com.nexaerp.settings.SettingKey;
 import com.nexaerp.settings.SystemSettingsService;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class InvoiceServiceImpl implements InvoiceService{
     private final SystemSettingsService systemSettingsService;
     private final AuditLogService auditLogService;
     private final AccountingPeriodService accountingPeriodService;
+    private final MakerCheckerService makerCheckerService;
 
     @Override
     @Transactional
@@ -191,6 +193,11 @@ public class InvoiceServiceImpl implements InvoiceService{
         if (journalEntryRepository.findBySourceTypeAndSourceId(JournalSourceType.INVOICE, invoice.getId()).isPresent()) {
             throw new BusinessRuleException("Journal entry already exists for this invoice");
         }
+
+        makerCheckerService.validateChecker(
+                invoice.getCreatedBy(),
+                "Invoice"
+        );
 
         /*
          * Period lock validation must happen before:

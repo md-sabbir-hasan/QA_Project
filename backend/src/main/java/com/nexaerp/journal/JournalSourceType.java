@@ -6,5 +6,6 @@ public enum JournalSourceType {
     VENDOR_BILL,
     PAYMENT,
     BANK_TRANSACTION,
-    EXPENSE_CLAIM
+    EXPENSE_CLAIM,
+    CREDIT_NOTE
 }

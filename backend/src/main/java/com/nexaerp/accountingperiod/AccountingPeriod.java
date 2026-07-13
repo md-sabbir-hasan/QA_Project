@@ -1,4 +1,5 @@
 package com.nexaerp.accountingperiod;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.nexaerp.fiscalyear.FiscalYear;
 import com.nexaerp.common.BaseEntity;
 import jakarta.persistence.*;
@@ -33,6 +34,7 @@ public class AccountingPeriod extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "fiscal_year_id", nullable = false)
     private FiscalYear fiscalYear;

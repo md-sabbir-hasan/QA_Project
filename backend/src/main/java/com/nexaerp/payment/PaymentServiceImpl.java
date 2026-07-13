@@ -18,6 +18,7 @@ import com.nexaerp.payment.dto.PaymentAllocationRequestDto;
 import com.nexaerp.payment.dto.PaymentAllocationResponseDto;
 import com.nexaerp.payment.dto.PaymentRequestDto;
 import com.nexaerp.payment.dto.PaymentResponseDto;
+import com.nexaerp.security.MakerCheckerService;
 import com.nexaerp.settings.SettingKey;
 import com.nexaerp.settings.SystemSettingsService;
 import com.nexaerp.vendorbill.VendorBill;
@@ -49,6 +50,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final SystemSettingsService systemSettingsService;
     private final AuditLogService auditLogService;
     private final AccountingPeriodService accountingPeriodService;
+    private final MakerCheckerService makerCheckerService;
 
 
     @Override
@@ -168,6 +170,12 @@ public class PaymentServiceImpl implements PaymentService {
         if (journalEntryRepository.findBySourceTypeAndSourceId(JournalSourceType.PAYMENT, payment.getId()).isPresent()) {
             throw new BusinessRuleException("Journal entry already exists for this payment");
         }
+
+        makerCheckerService.validateChecker(
+                payment.getCreatedBy(),
+                "Payment"
+        );
+
 
 
         /*

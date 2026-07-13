@@ -23,4 +23,5 @@ export const APP_ROUTES = {
 
   FISCAL_YEAR: '/fiscal-years',
   ACCOUNTING_PERIOD: '/accounting-periods',
+  CREDIT_NOTE: '/credit-notes',
 } as const;

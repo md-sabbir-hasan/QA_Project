@@ -11,6 +11,7 @@ import com.nexaerp.journal.dto.JournalEntryRequestDto;
 import com.nexaerp.journal.dto.JournalEntryResponseDto;
 import com.nexaerp.journal.dto.JournalLineRequestDto;
 import com.nexaerp.journal.dto.JournalLineResponseDto;
+import com.nexaerp.security.MakerCheckerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ public class JournalEntryServiceImpl implements JournalEntryService{
     private final AccountRepository accountRepository;
     private final AuditLogService auditLogService;
     private final AccountingPeriodService accountingPeriodService;
+    private final MakerCheckerService makerCheckerService;
 
 
     @Override
@@ -163,6 +165,12 @@ public class JournalEntryServiceImpl implements JournalEntryService{
         if (totalDebit.compareTo(totalCredit) != 0) {
             throw new BusinessRuleException("Total debit must equal total credit before posting");
         }
+
+//        Maker-Checker
+        makerCheckerService.validateChecker(
+                entry.getCreatedBy(),
+                "Journal Entry"
+        );
 
         // Validate Accounting Period
         accountingPeriodService.validatePostingDate(entry.getDate());

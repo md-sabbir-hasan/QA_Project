@@ -11,6 +11,7 @@ public enum SettingKey {
     DEFAULT_INPUT_VAT,
     DEFAULT_TDS_PAYABLE,
     DEFAULT_OPENING_EQUITY,
+    DEFAULT_SALES_RETURN_ACCOUNT,
 
     // Company Settings (future)
     COMPANY_NAME,
@@ -33,7 +34,8 @@ public enum SettingKey {
             DEFAULT_VAT_PAYABLE,
             DEFAULT_INPUT_VAT,
             DEFAULT_TDS_PAYABLE,
-            DEFAULT_OPENING_EQUITY
+            DEFAULT_OPENING_EQUITY,
+            DEFAULT_SALES_RETURN_ACCOUNT
     );
 
     public boolean isAccountReference() {

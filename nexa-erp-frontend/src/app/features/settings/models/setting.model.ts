@@ -2,6 +2,7 @@ export type SettingKey =
   | 'DEFAULT_RECEIVABLE_ACCOUNT'
   | 'DEFAULT_PAYABLE_ACCOUNT'
   | 'DEFAULT_SALES_REVENUE'
+  | 'DEFAULT_SALES_RETURN_ACCOUNT'
   | 'DEFAULT_VAT_PAYABLE'
   | 'DEFAULT_INPUT_VAT'
   | 'DEFAULT_TDS_PAYABLE'
@@ -24,13 +25,11 @@ export interface SystemSetting {
   updatedAt: string;
 }
 
-// Backend's PUT /api/settings/{key} currently only accepts { accountId },
-// so only these keys can actually be saved today. Everything else in the
-// SettingKey enum is defined but not yet wired up on the backend.
 export const ACCOUNT_MAPPED_KEYS: SettingKey[] = [
   'DEFAULT_RECEIVABLE_ACCOUNT',
   'DEFAULT_PAYABLE_ACCOUNT',
   'DEFAULT_SALES_REVENUE',
+  'DEFAULT_SALES_RETURN_ACCOUNT',
   'DEFAULT_VAT_PAYABLE',
   'DEFAULT_INPUT_VAT',
   'DEFAULT_TDS_PAYABLE',
@@ -41,6 +40,7 @@ export const SETTING_LABELS: Record<SettingKey, string> = {
   DEFAULT_RECEIVABLE_ACCOUNT: 'Default Accounts Receivable',
   DEFAULT_PAYABLE_ACCOUNT: 'Default Accounts Payable',
   DEFAULT_SALES_REVENUE: 'Default Sales Revenue',
+  DEFAULT_SALES_RETURN_ACCOUNT: 'Default Sales Return Account',
   DEFAULT_VAT_PAYABLE: 'Default VAT Payable',
   DEFAULT_INPUT_VAT: 'Default Input VAT',
   DEFAULT_TDS_PAYABLE: 'Default TDS Payable',

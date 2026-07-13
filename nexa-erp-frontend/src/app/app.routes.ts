@@ -67,16 +67,16 @@ export const routes: Routes = [
       {
         path: 'fiscal-years',
         loadComponent: () =>
-          import(
-            './features/fiscal-year/pages/fiscal-year-list/fiscal-year-list'
-          ).then((m) => m.FiscalYearList),
+          import('./features/fiscal-year/pages/fiscal-year-list/fiscal-year-list').then(
+            (m) => m.FiscalYearList,
+          ),
       },
       {
         path: 'accounting-periods',
         loadComponent: () =>
-          import(
-            './features/accounting-period/pages/accounting-period-list/accounting-period-list'
-          ).then((m) => m.AccountingPeriodList),
+          import('./features/accounting-period/pages/accounting-period-list/accounting-period-list').then(
+            (m) => m.AccountingPeriodList,
+          ),
       },
 
       {
@@ -262,6 +262,27 @@ export const routes: Routes = [
           ),
       },
 
+      {
+        path: 'credit-notes',
+        loadComponent: () =>
+          import('./features/credit-note/pages/credit-note-list/credit-note-list').then(
+            (m) => m.CreditNoteList,
+          ),
+      },
+      {
+        path: 'credit-notes/new',
+        loadComponent: () =>
+          import('./features/credit-note/pages/credit-note-form/credit-note-form').then(
+            (m) => m.CreditNoteForm,
+          ),
+      },
+      {
+        path: 'credit-notes/:id/edit',
+        loadComponent: () =>
+          import('./features/credit-note/pages/credit-note-form/credit-note-form').then(
+            (m) => m.CreditNoteForm,
+          ),
+      },
 
       {
         path: '',
