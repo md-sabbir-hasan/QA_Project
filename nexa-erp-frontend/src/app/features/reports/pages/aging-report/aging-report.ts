@@ -2,7 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-
+import {
+  EXCEL_MIME_TYPE,
+  extractBlobErrorMessage,
+  triggerBlobDownload,
+} from '../../../../core/utils/file-download.util';
 import { AlertService } from '../../../../core/services/alert.service';
 
 import { AgingResponse } from '../../models/aging.model';
@@ -75,5 +79,32 @@ export class AgingReport implements OnInit {
 
   printReport(): void {
     window.print();
+  }
+
+  exportReport(): void {
+    if (!this.report()) {
+      this.alert.error('Generate the aging report before exporting');
+      return;
+    }
+
+    this.reportService.downloadAgingExcel(this.partyType(), this.asOfDate()).subscribe({
+      next: (blob) => {
+        if (!blob || blob.size === 0) {
+          this.alert.error('Generated Excel file is empty');
+          return;
+        }
+
+        triggerBlobDownload(
+          blob,
+          `aging-report-${this.partyType().toLowerCase()}-${this.asOfDate()}.xlsx`,
+          EXCEL_MIME_TYPE,
+        );
+      },
+      error: async (error) => {
+        this.alert.error(
+          await extractBlobErrorMessage(error, 'Failed to export aging report to Excel'),
+        );
+      },
+    });
   }
 }

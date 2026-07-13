@@ -6,6 +6,11 @@ import { RouterLink } from '@angular/router';
 import { AlertService } from '../../../../core/services/alert.service';
 import { BalanceSheetResponse } from '../../models/balance-sheet.model';
 import { ReportService } from '../../services/report.service';
+import {
+  EXCEL_MIME_TYPE,
+  extractBlobErrorMessage,
+  triggerBlobDownload,
+} from '../../../../core/utils/file-download.util';
 
 @Component({
   selector: 'app-balance-sheet-report',
@@ -86,5 +91,28 @@ export class BalanceSheetReport implements OnInit {
     }
 
     return Number(report.totalAssets) - Number(report.totalLiabilitiesAndEquity);
+  }
+
+  exportReport(): void {
+    if (!this.report()) {
+      this.alert.error('Generate the balance sheet before exporting');
+      return;
+    }
+
+    this.reportService.downloadBalanceSheetExcel(this.asOfDate()).subscribe({
+      next: (blob) => {
+        if (!blob || blob.size === 0) {
+          this.alert.error('Generated Excel file is empty');
+          return;
+        }
+
+        triggerBlobDownload(blob, `balance-sheet-${this.asOfDate()}.xlsx`, EXCEL_MIME_TYPE);
+      },
+      error: async (error) => {
+        this.alert.error(
+          await extractBlobErrorMessage(error, 'Failed to export balance sheet to Excel'),
+        );
+      },
+    });
   }
 }

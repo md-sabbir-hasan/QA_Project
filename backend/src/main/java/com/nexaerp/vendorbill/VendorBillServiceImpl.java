@@ -2,6 +2,7 @@ package com.nexaerp.vendorbill;
 
 import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
+import com.nexaerp.accountingperiod.AccountingPeriodService;
 import com.nexaerp.audit.AuditAction;
 import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.common.exception.BusinessRuleException;
@@ -41,6 +42,7 @@ public class VendorBillServiceImpl implements VendorBillService {
     private final JournalLineRepository journalLineRepository;
     private final SystemSettingsService systemSettingsService;
     private final AuditLogService auditLogService;
+    private final AccountingPeriodService accountingPeriodService;
 
 
     @Override
@@ -237,6 +239,16 @@ public class VendorBillServiceImpl implements VendorBillService {
 
         VendorBillStatus oldStatus = bill.getStatus();
 
+        /*
+         * Validate Accounting Period before:
+         * - Journal creation
+         * - Account balance update
+         * - Status change
+         */
+        accountingPeriodService.validatePostingDate(
+                bill.getPostingDate()
+        );
+
         createJournalEntry(bill);
 
         bill.setStatus(VendorBillStatus.POSTED);
@@ -276,6 +288,13 @@ public class VendorBillServiceImpl implements VendorBillService {
         VendorBillStatus oldStatus = bill.getStatus();
 
         if (bill.getStatus().equals(VendorBillStatus.POSTED)) {
+            /*
+             * Reversal journal uses today's date.
+             * Today's accounting period must be OPEN.
+             */
+            accountingPeriodService.validatePostingDate(
+                    LocalDate.now()
+            );
             reverseJournalEntry(bill);
         }
 

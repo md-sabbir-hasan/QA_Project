@@ -610,3 +610,12 @@ tfoot td {
         padding: 7px;
     }
 }
+
+.excel-btn {
+    background: #dcfce7;
+    color: #166534;
+
+    &:hover {
+        background: #bbf7d0;
+    }
+}

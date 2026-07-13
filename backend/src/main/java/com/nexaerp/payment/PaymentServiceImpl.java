@@ -2,6 +2,7 @@ package com.nexaerp.payment;
 
 import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
+import com.nexaerp.accountingperiod.AccountingPeriodService;
 import com.nexaerp.audit.AuditAction;
 import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.common.exception.BusinessRuleException;
@@ -47,6 +48,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final JournalLineRepository journalLineRepository;
     private final SystemSettingsService systemSettingsService;
     private final AuditLogService auditLogService;
+    private final AccountingPeriodService accountingPeriodService;
 
 
     @Override
@@ -167,6 +169,17 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessRuleException("Journal entry already exists for this payment");
         }
 
+
+        /*
+         * Validate Accounting Period before:
+         * - Journal creation
+         * - Account balance update
+         * - Status change
+         */
+        accountingPeriodService.validatePostingDate(
+                payment.getPaymentDate()
+        );
+
         // Step 1 — create the journal entry for this payment
         createJournalEntry(payment);
 
@@ -207,6 +220,13 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentStatus oldStatus = payment.getStatus();
 
         if (payment.getStatus().equals(PaymentStatus.POSTED)) {
+            /*
+             * Reversal journal uses today's date.
+             * Today's accounting period must be OPEN.
+             */
+            accountingPeriodService.validatePostingDate(
+                    LocalDate.now()
+            );
             reverseJournalEntry(payment);
 
             List<PaymentAllocation> allocations =

@@ -3,6 +3,7 @@ package com.nexaerp.banking.serviceimpl;
 
 import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
+import com.nexaerp.accountingperiod.AccountingPeriodService;
 import com.nexaerp.banking.dto.BankTransactionRequestDto;
 import com.nexaerp.banking.dto.BankTransactionResponseDto;
 import com.nexaerp.banking.dto.BankTransferRequestDto;
@@ -37,7 +38,7 @@ public class BankTransactionServiceImpl implements BankTransactionService {
     private final AccountRepository accountRepository;
     private final JournalEntryRepository journalEntryRepository;
     private final JournalLineRepository journalLineRepository;
-
+    private final AccountingPeriodService accountingPeriodService;
 
 
     @Override
@@ -154,6 +155,15 @@ public class BankTransactionServiceImpl implements BankTransactionService {
             throw new BusinessRuleException(
                     "Cannot void a reconciled transaction. Un-reconcile it first.");
         }
+
+        LocalDate reversalDate = LocalDate.now();
+
+        /*
+         * Validate before reversing bank balance,
+         * COA balance or journal entry.
+         */
+        accountingPeriodService.validatePostingDate(reversalDate);
+
 
         BankAccount bankAccount = transaction.getBankAccount();
 
@@ -277,15 +287,37 @@ public class BankTransactionServiceImpl implements BankTransactionService {
     // _______Private helper__________
 
 
-    private BankTransaction createInternal(BankAccount bankAccount,
-                                           LocalDate transactionDate,
-                                           TransactionType transactionType,
-                                           BigDecimal amount,
-                                           String description,
-                                           String referenceNumber,
-                                           Account contraAccount,
-                                           TransactionSourceType sourceType,
-                                           Long sourceId) {
+    private BankTransaction createInternal(
+            BankAccount bankAccount,
+            LocalDate transactionDate,
+            TransactionType transactionType,
+            BigDecimal amount,
+            String description,
+            String referenceNumber,
+            Account contraAccount,
+            TransactionSourceType sourceType,
+            Long sourceId
+    ) {
+        if (transactionDate == null) {
+            throw new BusinessRuleException(
+                    "Transaction date is required"
+            );
+        }
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessRuleException(
+                    "Transaction amount must be greater than zero"
+            );
+        }
+
+        /*
+         * Must run before:
+         * - BankTransaction save
+         * - Bank balance update
+         * - Journal creation
+         * - COA balance update
+         */
+        accountingPeriodService.validatePostingDate(transactionDate);
 
         BankTransaction transaction = BankTransaction.builder()
                 .transactionNumber(generateTransactionNumber())
@@ -302,19 +334,21 @@ public class BankTransactionServiceImpl implements BankTransactionService {
                 .sourceId(sourceId)
                 .build();
 
-        BankTransaction saved = bankTransactionRepository.save(transaction);
+        BankTransaction saved =
+                bankTransactionRepository.save(transaction);
 
-        // Update bank account balance
         if (transactionType == TransactionType.CREDIT) {
             bankAccount.setCurrentBalance(
-                    bankAccount.getCurrentBalance().add(amount));
+                    bankAccount.getCurrentBalance().add(amount)
+            );
         } else {
             bankAccount.setCurrentBalance(
-                    bankAccount.getCurrentBalance().subtract(amount));
+                    bankAccount.getCurrentBalance().subtract(amount)
+            );
         }
+
         bankAccountRepository.save(bankAccount);
 
-        // Create Journal Entry
         createJournalEntry(saved, bankAccount, contraAccount);
 
         return saved;

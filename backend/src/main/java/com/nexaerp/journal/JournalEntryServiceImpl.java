@@ -2,6 +2,7 @@ package com.nexaerp.journal;
 
 import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
+import com.nexaerp.accountingperiod.AccountingPeriodService;
 import com.nexaerp.audit.AuditAction;
 import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.common.exception.BusinessRuleException;
@@ -27,6 +28,7 @@ public class JournalEntryServiceImpl implements JournalEntryService{
     private final JournalLineRepository journalLineRepository;
     private final AccountRepository accountRepository;
     private final AuditLogService auditLogService;
+    private final AccountingPeriodService accountingPeriodService;
 
 
     @Override
@@ -162,6 +164,10 @@ public class JournalEntryServiceImpl implements JournalEntryService{
             throw new BusinessRuleException("Total debit must equal total credit before posting");
         }
 
+        // Validate Accounting Period
+        accountingPeriodService.validatePostingDate(entry.getDate());
+
+
         // Balance update
         for (JournalLine line : entry.getLines()) {
             updateAccountBalance(line);
@@ -201,9 +207,14 @@ public class JournalEntryServiceImpl implements JournalEntryService{
             throw new BusinessRuleException("Only POSTED entries can be reversed");
         }
 
+        //period_validation
+        LocalDate reversalDate = LocalDate.now();
+
+        accountingPeriodService.validatePostingDate(reversalDate);
+
         JournalEntry reversal = new JournalEntry();
         reversal.setEntryNumber(generateEntryNumber());
-        reversal.setDate(LocalDate.now());
+        reversal.setDate(reversalDate);
         reversal.setDescription("Reversal of " + original.getEntryNumber());
         reversal.setType(original.getType());
         reversal.setStatus(JournalStatus.POSTED);

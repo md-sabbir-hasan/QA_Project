@@ -148,6 +148,15 @@
   transition: 0.18s;
 }
 
+.excel-btn {
+  background: #dcfce7;
+  color: #166534;
+
+  &:hover {
+    background: #bbf7d0;
+  }
+}
+
 .clear-btn {
   background: #f1f5f9;
   color: #334155;

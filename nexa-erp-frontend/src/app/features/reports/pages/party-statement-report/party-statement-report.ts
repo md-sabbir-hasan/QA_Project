@@ -2,7 +2,12 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-
+import {
+  EXCEL_MIME_TYPE,
+  extractBlobErrorMessage,
+  toSafeFilenamePart,
+  triggerBlobDownload,
+} from '../../../../core/utils/file-download.util';
 import { AlertService } from '../../../../core/services/alert.service';
 import { Party } from '../../../party/models/party.model';
 import { PartyService } from '../../../party/services/party.service';
@@ -171,7 +176,6 @@ export class PartyStatementReport implements OnInit {
         anchor.click();
         anchor.remove();
 
-        
         setTimeout(() => {
           URL.revokeObjectURL(objectUrl);
         }, 1000);
@@ -180,21 +184,53 @@ export class PartyStatementReport implements OnInit {
       error: async (error) => {
         let message = 'Failed to download party statement PDF';
 
-        
         if (error?.error instanceof Blob) {
           try {
             const text = await error.error.text();
             const body = JSON.parse(text);
 
             message = body?.message ?? message;
-          } catch {
-            
-          }
+          } catch {}
         } else {
           message = error?.error?.message ?? message;
         }
 
         this.alert.error(message);
+      },
+    });
+  }
+
+  // Download Party Statement as Excel
+  downloadExcel(): void {
+    const partyId = this.selectedPartyId();
+    const fromDate = this.fromDate();
+    const toDate = this.toDate();
+    const statement = this.statement();
+
+    if (!partyId || !fromDate || !toDate || !statement) {
+      this.alert.error('Generate the statement before downloading Excel');
+      return;
+    }
+
+    this.reportService.downloadPartyStatementExcel(partyId, fromDate, toDate).subscribe({
+      next: (blob) => {
+        if (!blob || blob.size === 0) {
+          this.alert.error('Generated Excel file is empty');
+          return;
+        }
+
+        const safePartyName = toSafeFilenamePart(statement.partyName);
+
+        triggerBlobDownload(
+          blob,
+          `party-statement-${safePartyName || partyId}-${fromDate}-${toDate}.xlsx`,
+          EXCEL_MIME_TYPE,
+        );
+      },
+      error: async (error) => {
+        this.alert.error(
+          await extractBlobErrorMessage(error, 'Failed to download party statement Excel'),
+        );
       },
     });
   }

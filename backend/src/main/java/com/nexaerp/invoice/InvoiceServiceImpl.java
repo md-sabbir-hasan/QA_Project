@@ -2,6 +2,7 @@ package com.nexaerp.invoice;
 
 import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
+import com.nexaerp.accountingperiod.AccountingPeriodService;
 import com.nexaerp.audit.AuditAction;
 import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.common.exception.BusinessRuleException;
@@ -39,6 +40,7 @@ public class InvoiceServiceImpl implements InvoiceService{
     private final JournalLineRepository journalLineRepository;
     private final SystemSettingsService systemSettingsService;
     private final AuditLogService auditLogService;
+    private final AccountingPeriodService accountingPeriodService;
 
     @Override
     @Transactional
@@ -190,6 +192,16 @@ public class InvoiceServiceImpl implements InvoiceService{
             throw new BusinessRuleException("Journal entry already exists for this invoice");
         }
 
+        /*
+         * Period lock validation must happen before:
+         * - journal creation
+         * - account balance update
+         * - invoice status change
+         */
+        accountingPeriodService.validatePostingDate(
+                invoice.getInvoiceDate()
+        );
+
         //Make Auto Journal Entry
         createJournalEntry(invoice);
 
@@ -228,8 +240,17 @@ public class InvoiceServiceImpl implements InvoiceService{
         InvoiceStatus oldStatus = invoice.getStatus();
 
         if (invoice.getStatus().equals(InvoiceStatus.POSTED)) {
+            /*
+             * The reversal journal uses today's date.
+             * Therefore today's accounting period must be open.
+             */
+            accountingPeriodService.validatePostingDate(
+                    LocalDate.now()
+            );
             reverseJournalEntry(invoice);
         }
+
+
 
         invoice.setStatus(InvoiceStatus.CANCELLED);
         invoice.setCancelledReason(reason);
@@ -383,43 +404,63 @@ public class InvoiceServiceImpl implements InvoiceService{
 
     private void reverseJournalEntry(Invoice invoice) {
 
-        // Find original journal entry Through Source type and ID
+        LocalDate reversalDate = LocalDate.now();
+
         journalEntryRepository
-                .findBySourceTypeAndSourceId(JournalSourceType.INVOICE, invoice.getId())
+                .findBySourceTypeAndSourceId(
+                        JournalSourceType.INVOICE,
+                        invoice.getId()
+                )
                 .ifPresent(original -> {
+
                     if (original.getStatus() == JournalStatus.REVERSED) {
-                        throw new BusinessRuleException("Journal entry is already reversed");
+                        throw new BusinessRuleException(
+                                "Journal entry is already reversed"
+                        );
                     }
 
                     JournalEntry reversal = new JournalEntry();
                     reversal.setEntryNumber(generateJournalNumber());
-                    reversal.setDate(LocalDate.now());
-                    reversal.setDescription("Reversal - " + invoice.getInvoiceNumber());
+                    reversal.setDate(reversalDate);
+                    reversal.setDescription(
+                            "Reversal - " + invoice.getInvoiceNumber()
+                    );
                     reversal.setType(JournalEntryType.SALES);
                     reversal.setStatus(JournalStatus.POSTED);
                     reversal.setSourceType(JournalSourceType.INVOICE);
                     reversal.setSourceId(invoice.getId());
                     reversal.setTotalAmount(original.getTotalAmount());
                     reversal.setReversedFromId(original.getId());
-                    reversal.setReferenceNumber("REV-" + original.getReferenceNumber());
+                    reversal.setReferenceNumber(
+                            "REV-" + original.getReferenceNumber()
+                    );
 
-                    JournalEntry savedReversal = journalEntryRepository.save(reversal);
+                    JournalEntry savedReversal =
+                            journalEntryRepository.save(reversal);
 
-                    // Reverse Line
                     List<JournalLine> originalLines =
-                            journalLineRepository.findByJournalEntryId(original.getId());
+                            journalLineRepository
+                                    .findByJournalEntryId(original.getId());
 
                     originalLines.forEach(line -> {
-                        JournalLine reversalLine = new JournalLine();
+                        JournalLine reversalLine =
+                                new JournalLine();
+
                         reversalLine.setJournalEntry(savedReversal);
                         reversalLine.setAccount(line.getAccount());
                         reversalLine.setDebit(line.getCredit());
                         reversalLine.setCredit(line.getDebit());
-                        reversalLine.setDescription("Reversal: " + line.getDescription());
+                        reversalLine.setDescription(
+                                "Reversal: " + line.getDescription()
+                        );
+
                         journalLineRepository.save(reversalLine);
 
-                        // Balance update
-                        updateBalance(line.getAccount(), line.getCredit(), line.getDebit());
+                        updateBalance(
+                                line.getAccount(),
+                                line.getCredit(),
+                                line.getDebit()
+                        );
                     });
 
                     original.setStatus(JournalStatus.REVERSED);
