@@ -631,3 +631,31 @@ Finance Phase E — Advanced Accounting
 18. Comparative Reports
 19. Period Closing
 20. Year-End Closing
+
+
+
+
+
+plan===
+
+✔ Fiscal Year
+✔ Accounting Period
+
+⬇
+
+1. Period Lock ⭐⭐⭐⭐⭐
+2. Maker-Checker ⭐⭐⭐⭐
+3. Credit Note ⭐⭐⭐⭐⭐
+4. Debit Note ⭐⭐⭐⭐⭐
+5. Credit Limit ⭐⭐⭐⭐
+6. Overdue Management ⭐⭐⭐⭐
+7. Cost Center ⭐⭐⭐⭐⭐
+8. Budget Management ⭐⭐⭐⭐⭐
+9. Fixed Asset ⭐⭐⭐⭐⭐
+10. Depreciation Scheduler ⭐⭐⭐⭐
+11. Cash Flow Statement ⭐⭐⭐⭐⭐
+12. Month-End Closing ⭐⭐⭐⭐⭐
+13. Year-End Closing ⭐⭐⭐⭐⭐
+14. Audit Timeline ⭐⭐⭐⭐
+15. Document Sequence Manager ⭐⭐⭐⭐
+16. Flyway Migration ⭐⭐⭐⭐⭐
