@@ -1,5 +1,6 @@
 package com.nexaerp.vendorbill;
 
+import com.nexaerp.common.BaseEntity;
 import com.nexaerp.party.Party;
 import jakarta.persistence.*;
 import lombok.*;
@@ -16,7 +17,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VendorBill {
+public class VendorBill extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -88,22 +89,12 @@ public class VendorBill {
     private LocalDateTime postedAt;
 
     // Audit
-    private Long createdBy;
-    private LocalDateTime createdAt;
-    private Long updatedBy;
-    private LocalDateTime updatedAt;
+//    private Long createdBy;
+//    private LocalDateTime createdAt;
+//    private Long updatedBy;
+//    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "vendorBill", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<VendorBillItem> items;
 
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

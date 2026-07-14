@@ -11,6 +11,7 @@ import com.nexaerp.journal.*;
 import com.nexaerp.party.Party;
 import com.nexaerp.party.PartyRepository;
 import com.nexaerp.party.PartyType;
+import com.nexaerp.security.CurrentUserService;
 import com.nexaerp.security.MakerCheckerService;
 import com.nexaerp.settings.SettingKey;
 import com.nexaerp.settings.SystemSettingsService;
@@ -45,6 +46,7 @@ public class VendorBillServiceImpl implements VendorBillService {
     private final AuditLogService auditLogService;
     private final AccountingPeriodService accountingPeriodService;
     private final MakerCheckerService makerCheckerService;
+    private final CurrentUserService currentUserService;
 
 
     @Override
@@ -199,6 +201,9 @@ public class VendorBillServiceImpl implements VendorBillService {
 
         bill.setStatus(VendorBillStatus.APPROVED);
         bill.setApprovedAt(LocalDateTime.now());
+        bill.setApprovedBy(
+                currentUserService.getCurrentUserId()
+        );
 
         VendorBill saved = vendorBillRepository.save(bill);
 
@@ -216,64 +221,90 @@ public class VendorBillServiceImpl implements VendorBillService {
     @Override
     @Transactional
     public VendorBillResponseDto post(Long id) {
+
         VendorBill bill = vendorBillRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Vendor bill not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Vendor bill not found"
+                        )
+                );
 
         if (bill.getStatus() == VendorBillStatus.POSTED) {
-            throw new BusinessRuleException("Vendor bill is already posted");
+            throw new BusinessRuleException(
+                    "Vendor bill is already posted"
+            );
         }
 
         if (bill.getStatus() == VendorBillStatus.CANCELLED) {
-            throw new BusinessRuleException("Cannot post a cancelled vendor bill");
+            throw new BusinessRuleException(
+                    "Cannot post a cancelled vendor bill"
+            );
         }
 
-        if (!bill.getStatus().equals(VendorBillStatus.APPROVED)) {
-            throw new BusinessRuleException("Only APPROVED bills can be posted");
+        if (bill.getStatus() != VendorBillStatus.APPROVED) {
+            throw new BusinessRuleException(
+                    "Only APPROVED bills can be posted"
+            );
         }
 
-        List<VendorBillItem> items = vendorBillItemRepository.findByVendorBillId(bill.getId());
+        List<VendorBillItem> items =
+                vendorBillItemRepository.findByVendorBillId(
+                        bill.getId()
+                );
 
         if (items == null || items.isEmpty()) {
-            throw new BusinessRuleException("Cannot post a vendor bill with zero items");
+            throw new BusinessRuleException(
+                    "Cannot post a vendor bill with zero items"
+            );
         }
 
-        if (journalEntryRepository.findBySourceTypeAndSourceId(
-                JournalSourceType.VENDOR_BILL,
-                bill.getId()
-        ).isPresent()) {
-            throw new BusinessRuleException("Journal entry already exists for this vendor bill");
+        if (journalEntryRepository
+                .findBySourceTypeAndSourceId(
+                        JournalSourceType.VENDOR_BILL,
+                        bill.getId()
+                )
+                .isPresent()) {
+
+            throw new BusinessRuleException(
+                    "Journal entry already exists for this vendor bill"
+            );
         }
 
-        VendorBillStatus oldStatus = bill.getStatus();
-
+        /*
+         * Creator cannot post their own vendor bill.
+         */
         makerCheckerService.validateChecker(
                 bill.getCreatedBy(),
                 "Vendor Bill"
         );
 
         /*
-         * Validate Accounting Period before:
-         * - Journal creation
-         * - Account balance update
-         * - Status change
+         * Posting period must be open.
+         * Run this before journal or balance changes.
          */
         accountingPeriodService.validatePostingDate(
                 bill.getPostingDate()
         );
 
+        VendorBillStatus oldStatus = bill.getStatus();
+
         createJournalEntry(bill);
 
         bill.setStatus(VendorBillStatus.POSTED);
         bill.setPostedAt(LocalDateTime.now());
+        bill.setPostedBy(
+                currentUserService.getCurrentUserId()
+        );
 
-        VendorBill saved = vendorBillRepository.save(bill);
+        VendorBill saved =
+                vendorBillRepository.save(bill);
 
         auditLogService.log(
                 AuditAction.POSTED,
                 "VENDOR_BILL",
                 saved.getId(),
                 oldStatus.name(),
-                "POSTED"
+                VendorBillStatus.POSTED.name()
         );
 
         return toResponse(saved);

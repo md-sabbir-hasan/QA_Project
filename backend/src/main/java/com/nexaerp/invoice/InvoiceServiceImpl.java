@@ -14,6 +14,7 @@ import com.nexaerp.invoice.dto.InvoiceResponseDto;
 import com.nexaerp.journal.*;
 import com.nexaerp.party.Party;
 import com.nexaerp.party.PartyRepository;
+import com.nexaerp.security.CurrentUserService;
 import com.nexaerp.security.MakerCheckerService;
 import com.nexaerp.settings.SettingKey;
 import com.nexaerp.settings.SystemSettingsService;
@@ -43,6 +44,7 @@ public class InvoiceServiceImpl implements InvoiceService{
     private final AuditLogService auditLogService;
     private final AccountingPeriodService accountingPeriodService;
     private final MakerCheckerService makerCheckerService;
+    private final CurrentUserService currentUserService;
 
     @Override
     @Transactional
@@ -214,16 +216,19 @@ public class InvoiceServiceImpl implements InvoiceService{
 
         invoice.setStatus(InvoiceStatus.POSTED);
         invoice.setPostedAt(LocalDateTime.now());
+        invoice.setPostedBy(currentUserService.getCurrentUserId());
+
+        Invoice saved = invoiceRepository.save(invoice);
 
         auditLogService.log(
                 AuditAction.POSTED,
                 "INVOICE",
-                invoice.getId(),
+                saved.getId(),
                 "DRAFT",
                 "POSTED"
         );
 
-        return toResponse(invoiceRepository.save(invoice));
+        return toResponse(saved);
     }
 
     @Override

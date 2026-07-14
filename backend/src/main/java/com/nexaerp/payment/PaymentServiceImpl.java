@@ -18,6 +18,7 @@ import com.nexaerp.payment.dto.PaymentAllocationRequestDto;
 import com.nexaerp.payment.dto.PaymentAllocationResponseDto;
 import com.nexaerp.payment.dto.PaymentRequestDto;
 import com.nexaerp.payment.dto.PaymentResponseDto;
+import com.nexaerp.security.CurrentUserService;
 import com.nexaerp.security.MakerCheckerService;
 import com.nexaerp.settings.SettingKey;
 import com.nexaerp.settings.SystemSettingsService;
@@ -51,6 +52,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final AuditLogService auditLogService;
     private final AccountingPeriodService accountingPeriodService;
     private final MakerCheckerService makerCheckerService;
+    private final CurrentUserService currentUserService;
 
 
     @Override
@@ -145,55 +147,80 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponseDto post(Long id) {
 
         Payment payment = paymentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Payment not found")
+                );
 
         if (payment.getStatus() == PaymentStatus.POSTED) {
-            throw new BusinessRuleException("Payment is already posted");
+            throw new BusinessRuleException(
+                    "Payment is already posted"
+            );
         }
 
         if (payment.getStatus() == PaymentStatus.CANCELLED) {
-            throw new BusinessRuleException("Cannot post a cancelled payment");
+            throw new BusinessRuleException(
+                    "Cannot post a cancelled payment"
+            );
         }
 
-        if (!payment.getStatus().equals(PaymentStatus.DRAFT)) {
-            throw new BusinessRuleException("Only DRAFT payments can be posted");
+        if (payment.getStatus() != PaymentStatus.DRAFT) {
+            throw new BusinessRuleException(
+                    "Only DRAFT payments can be posted"
+            );
         }
 
         if (payment.getParty() == null) {
-            throw new BusinessRuleException("Payment party is required");
+            throw new BusinessRuleException(
+                    "Payment party is required"
+            );
         }
 
         if (payment.getAccount() == null) {
-            throw new BusinessRuleException("Payment bank account is required");
+            throw new BusinessRuleException(
+                    "Payment bank account is required"
+            );
         }
 
-        if (journalEntryRepository.findBySourceTypeAndSourceId(JournalSourceType.PAYMENT, payment.getId()).isPresent()) {
-            throw new BusinessRuleException("Journal entry already exists for this payment");
+        if (payment.getAmount() == null
+                || payment.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessRuleException(
+                    "Payment amount must be greater than zero"
+            );
         }
 
+        if (journalEntryRepository
+                .findBySourceTypeAndSourceId(
+                        JournalSourceType.PAYMENT,
+                        payment.getId()
+                )
+                .isPresent()) {
+
+            throw new BusinessRuleException(
+                    "Journal entry already exists for this payment"
+            );
+        }
+
+        /*
+         * Creator cannot post their own payment.
+         */
         makerCheckerService.validateChecker(
                 payment.getCreatedBy(),
                 "Payment"
         );
 
-
-
         /*
-         * Validate Accounting Period before:
-         * - Journal creation
-         * - Account balance update
-         * - Status change
+         * Payment date must belong to an OPEN accounting period.
          */
         accountingPeriodService.validatePostingDate(
                 payment.getPaymentDate()
         );
 
-        // Step 1 — create the journal entry for this payment
         createJournalEntry(payment);
 
-        // Step 2 — apply each allocation to the matching invoice/bill
         List<PaymentAllocation> allocations =
-                paymentAllocationRepository.findByPaymentId(payment.getId());
+                paymentAllocationRepository.findByPaymentId(
+                        payment.getId()
+                );
 
         for (PaymentAllocation allocation : allocations) {
             applyAllocationToDocument(allocation);
@@ -201,44 +228,57 @@ public class PaymentServiceImpl implements PaymentService {
 
         payment.setStatus(PaymentStatus.POSTED);
         payment.setPostedAt(LocalDateTime.now());
+        payment.setPostedBy(
+                currentUserService.getCurrentUserId()
+        );
 
+        Payment saved = paymentRepository.save(payment);
 
-        //audit
         auditLogService.log(
                 AuditAction.POSTED,
                 "PAYMENT",
-                payment.getId(),
-                "DRAFT",
-                "POSTED"
+                saved.getId(),
+                PaymentStatus.DRAFT.name(),
+                PaymentStatus.POSTED.name()
         );
 
-        return toResponse(paymentRepository.save(payment));
+        return toResponse(saved);
     }
 
     @Override
     @Transactional
     public PaymentResponseDto cancel(Long id) {
-        Payment payment = paymentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
 
-        if (payment.getStatus().equals(PaymentStatus.CANCELLED)) {
-            throw new BusinessRuleException("Payment is already cancelled");
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Payment not found")
+                );
+
+        if (payment.getStatus() == PaymentStatus.CANCELLED) {
+            throw new BusinessRuleException(
+                    "Payment is already cancelled"
+            );
         }
 
         PaymentStatus oldStatus = payment.getStatus();
 
-        if (payment.getStatus().equals(PaymentStatus.POSTED)) {
+        if (payment.getStatus() == PaymentStatus.POSTED) {
+
+            LocalDate reversalDate = LocalDate.now();
+
             /*
              * Reversal journal uses today's date.
-             * Today's accounting period must be OPEN.
              */
             accountingPeriodService.validatePostingDate(
-                    LocalDate.now()
+                    reversalDate
             );
-            reverseJournalEntry(payment);
+
+            reverseJournalEntry(payment, reversalDate);
 
             List<PaymentAllocation> allocations =
-                    paymentAllocationRepository.findByPaymentId(payment.getId());
+                    paymentAllocationRepository.findByPaymentId(
+                            payment.getId()
+                    );
 
             for (PaymentAllocation allocation : allocations) {
                 undoAllocationFromDocument(allocation);
@@ -246,6 +286,10 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         payment.setStatus(PaymentStatus.CANCELLED);
+        payment.setCancelledAt(LocalDateTime.now());
+        payment.setCancelledBy(
+                currentUserService.getCurrentUserId()
+        );
 
         Payment saved = paymentRepository.save(payment);
 
@@ -254,7 +298,7 @@ public class PaymentServiceImpl implements PaymentService {
                 "PAYMENT",
                 saved.getId(),
                 oldStatus.name(),
-                "CANCELLED"
+                PaymentStatus.CANCELLED.name()
         );
 
         return toResponse(saved);
@@ -508,7 +552,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
-    private void reverseJournalEntry(Payment payment) {
+    private void reverseJournalEntry(Payment payment, LocalDate reversalDate) {
 
         journalEntryRepository
                 .findBySourceTypeAndSourceId(JournalSourceType.PAYMENT, payment.getId())
@@ -519,7 +563,7 @@ public class PaymentServiceImpl implements PaymentService {
 
                     JournalEntry reversal = new JournalEntry();
                     reversal.setEntryNumber(generateJournalNumber());
-                    reversal.setDate(LocalDate.now());
+                    reversal.setDate(reversalDate);
                     reversal.setDescription("Reversal - " + payment.getPaymentNumber());
                     reversal.setType(JournalEntryType.CASH);
                     reversal.setStatus(JournalStatus.POSTED);

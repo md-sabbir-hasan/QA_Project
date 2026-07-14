@@ -1,6 +1,7 @@
 package com.nexaerp.payment;
 
 import com.nexaerp.account.Account;
+import com.nexaerp.common.BaseEntity;
 import com.nexaerp.party.Party;
 import jakarta.persistence.*;
 import lombok.*;
@@ -17,7 +18,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Payment {
+public class Payment extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -71,22 +72,16 @@ public class Payment {
     private Long postedBy;
 
     // Audit
-    private Long createdBy;
-    private LocalDateTime createdAt;
-    private Long updatedBy;
-    private LocalDateTime updatedAt;
+//    private Long createdBy;
+//    private LocalDateTime createdAt;
+//    private Long updatedBy;
+//    private LocalDateTime updatedAt;
+
+
+    private LocalDateTime cancelledAt;
+    private Long cancelledBy;
 
     @OneToMany(mappedBy = "payment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PaymentAllocation> allocations;
 
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

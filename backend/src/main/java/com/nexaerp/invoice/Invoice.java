@@ -1,6 +1,7 @@
 package com.nexaerp.invoice;
 
 
+import com.nexaerp.common.BaseEntity;
 import com.nexaerp.party.Party;
 import jakarta.persistence.*;
 import lombok.*;
@@ -18,7 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 
-public class Invoice {
+public class Invoice extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -79,24 +80,15 @@ public class Invoice {
     // Audit
     private LocalDateTime postedAt;
     private Long postedBy;
-    private Long createdBy;
-    private LocalDateTime createdAt;
-    private Long updatedBy;
-    private LocalDateTime updatedAt;
+
+//    private Long createdBy;
+//    private LocalDateTime createdAt;
+//    private Long updatedBy;
+//    private LocalDateTime updatedAt;
 
 
 
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InvoiceItem> items;
 
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }
