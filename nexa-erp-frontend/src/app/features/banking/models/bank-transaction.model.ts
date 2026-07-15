@@ -16,6 +16,7 @@ export interface BankTransaction {
   contraAccountName: string | null;
   reconciled: boolean;
   reconciledAt: string | null;
+  reconciliationId: number | null;
   voided: boolean;
   voidedAt: string | null;
   sourceType: TransactionSourceType;

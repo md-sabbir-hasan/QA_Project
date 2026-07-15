@@ -198,6 +198,34 @@ export const routes: Routes = [
             (m) => m.BankTransactionList,
           ),
       },
+      {
+        path: 'banking/reconciliation',
+        loadComponent: () =>
+          import('./features/banking/pages/bank-reconciliation-list/bank-reconciliation-list').then(
+            (m) => m.BankReconciliationList,
+          ),
+      },
+      {
+        path: 'banking/reconciliation/:id',
+        loadComponent: () =>
+          import('./features/banking/pages/bank-reconciliation-detail/bank-reconciliation-detail').then(
+            (m) => m.BankReconciliationDetail,
+          ),
+      },
+      {
+        path: 'banking/reconciliation',
+        loadComponent: () =>
+          import('./features/banking/pages/bank-reconciliation-list/bank-reconciliation-list').then(
+            (m) => m.BankReconciliationList,
+          ),
+      },
+      {
+        path: 'banking/reconciliation/:id',
+        loadComponent: () =>
+          import('./features/banking/pages/bank-reconciliation-detail/bank-reconciliation-detail').then(
+            (m) => m.BankReconciliationDetail,
+          ),
+      },
 
       {
         path: 'party',

@@ -118,6 +118,12 @@ export class MenuService {
             permission: PERMISSIONS.VIEW_BANKING,
           },
           {
+            label: 'Bank Reconciliation',
+            icon: 'bi-clipboard2-check',
+            route: APP_ROUTES.BANK_RECONCILIATION,
+            permission: PERMISSIONS.VIEW_BANKING
+          },
+          {
             label: 'Credit Notes',
             icon: 'bi-receipt-cutoff',
             route: APP_ROUTES.CREDIT_NOTE,

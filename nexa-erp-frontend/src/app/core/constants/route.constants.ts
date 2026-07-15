@@ -14,6 +14,7 @@ export const APP_ROUTES = {
   PAYMENT: '/payment',
   PARTY: '/party',
   BANKING: '/banking',
+  BANK_RECONCILIATION: '/banking/reconciliation',
 
   REPORTS: '/reports',
   LEDGER: '/reports/ledger',

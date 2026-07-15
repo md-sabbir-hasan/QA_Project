@@ -48,6 +48,9 @@ public class BankTransaction {
     private Boolean reconciled = false;
     private LocalDateTime reconciledAt;
 
+    // Which BankReconciliation batch matched this transaction (nullable)
+    private Long reconciliationId;
+
     private Boolean voided = false;
     private LocalDateTime voidedAt;
 
