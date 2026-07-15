@@ -4,6 +4,7 @@ package com.nexaerp.auth;
 import com.nexaerp.auth.dto.*;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.common.response.ApiResponse;
+import com.nexaerp.role.Role;
 import com.nexaerp.user.User;
 import com.nexaerp.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -49,6 +53,35 @@ public class AuthController {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         authService.logout(user.getId());
         return ResponseEntity.ok(ApiResponse.success("Logged out successfully", null));
+    }
+
+    // Current logged-in user's profile + roles + permissions.
+    // Any authenticated user can call this for themselves — no special permission required.
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<CurrentUserResponseDto>> me(
+            @AuthenticationPrincipal String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Set<String> roleNames = user.getRoles().stream()
+                .map(Role::getName)
+                .collect(Collectors.toSet());
+
+        Set<String> permissions = user.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(permission -> permission.getCode())
+                .collect(Collectors.toSet());
+
+        CurrentUserResponseDto dto = CurrentUserResponseDto.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .status(user.getStatus().name())
+                .roles(roleNames)
+                .permissions(permissions)
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
 //    ===============email========

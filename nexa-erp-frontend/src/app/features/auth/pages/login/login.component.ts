@@ -1,20 +1,22 @@
 import { CommonModule } from '@angular/common';
 import { Component, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { AlertService } from '../../../../core/services/alert.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
 export class LoginComponent {
   readonly loading = signal(false);
   readonly showPassword = signal(false);
+
+  readonly currentYear = new Date().getFullYear();
 
   readonly loginForm;
 
@@ -25,8 +27,8 @@ export class LoginComponent {
     private router: Router,
   ) {
     this.loginForm = this.fb.group({
-      email: ['admin@example.com', [Validators.required, Validators.email]],
-      password: ['admin123', [Validators.required]],
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required]],
     });
   }
 
@@ -42,8 +44,17 @@ export class LoginComponent {
 
     this.authService.login(request).subscribe({
       next: () => {
-        this.loading.set(false);
-        this.router.navigate(['/dashboard']);
+        this.authService.refreshCurrentUser().subscribe({
+          next: () => {
+            this.loading.set(false);
+            this.router.navigate(['/dashboard']);
+          },
+          error: () => {
+            // Profile fetch failed but login itself succeeded — still proceed
+            this.loading.set(false);
+            this.router.navigate(['/dashboard']);
+          },
+        });
       },
       error: (error) => {
         this.loading.set(false);

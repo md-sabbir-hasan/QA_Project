@@ -12,6 +12,15 @@ export interface LoginResponse {
   email: string;
 }
 
+export interface CurrentUserProfile {
+  id: number;
+  name: string;
+  email: string;
+  status: string;
+  roles: string[];
+  permissions: string[];
+}
+
 export interface RefreshTokenRequest {
   refreshToken: string;
 }

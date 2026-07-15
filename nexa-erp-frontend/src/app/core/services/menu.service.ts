@@ -5,14 +5,12 @@ import { AppMenuItem } from '../models/menu.model';
 import { TokenService } from './token.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class MenuService {
-
-  constructor(private tokenService: TokenService) { }
+  constructor(private tokenService: TokenService) {}
 
   getMenu(): AppMenuItem[] {
-
     const menu: AppMenuItem[] = [
       {
         label: 'Dashboard',
@@ -125,6 +123,13 @@ export class MenuService {
             route: APP_ROUTES.CREDIT_NOTE,
             permission: PERMISSIONS.VIEW_CREDIT_NOTE,
           },
+
+          {
+            label: 'Debit Notes',
+            icon: 'bi-receipt-cutoff',
+            route: APP_ROUTES.DEBIT_NOTE,
+            permission: PERMISSIONS.VIEW_DEBIT_NOTE,
+          },
         ],
       },
 
@@ -167,28 +172,17 @@ export class MenuService {
   }
 
   private filterByPermission(menu: AppMenuItem[]): AppMenuItem[] {
-
     return menu
-      .map(item => ({
+      .map((item) => ({
         ...item,
-        children: item.children
-          ? this.filterByPermission(item.children)
-          : undefined
+        children: item.children ? this.filterByPermission(item.children) : undefined,
       }))
-      .filter(item => {
+      .filter((item) => {
+        const hasPermission = !item.permission || this.tokenService.hasPermission(item.permission);
 
-        const hasPermission =
-          !item.permission ||
-          this.tokenService.hasPermission(item.permission);
-
-        const hasVisibleChildren =
-          !item.children ||
-          item.children.length > 0;
+        const hasVisibleChildren = !item.children || item.children.length > 0;
 
         return hasPermission && hasVisibleChildren;
-
       });
-
   }
-
 }

@@ -285,6 +285,28 @@ export const routes: Routes = [
       },
 
       {
+        path: 'debit-notes',
+        loadComponent: () =>
+          import('./features/debit-note/pages/debit-note-list/debit-note-list').then(
+            (m) => m.DebitNoteList,
+          ),
+      },
+      {
+        path: 'debit-notes/new',
+        loadComponent: () =>
+          import('./features/debit-note/pages/debit-note-form/debit-note-form').then(
+            (m) => m.DebitNoteForm,
+          ),
+      },
+      {
+        path: 'debit-notes/:id/edit',
+        loadComponent: () =>
+          import('./features/debit-note/pages/debit-note-form/debit-note-form').then(
+            (m) => m.DebitNoteForm,
+          ),
+      },
+
+      {
         path: '',
         pathMatch: 'full',
         redirectTo: 'dashboard',

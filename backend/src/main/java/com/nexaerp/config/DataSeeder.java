@@ -73,6 +73,16 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"CANCEL_CREDIT_NOTE", "Cancel Credit Note", "CREDIT_NOTE"},
                 new Object[]{"DELETE_CREDIT_NOTE", "Delete Credit Note", "CREDIT_NOTE"},
 
+                // debit note
+                new Object[]{"VIEW_DEBIT_NOTE", "View Debit Note", "DEBIT_NOTE"},
+                new Object[]{"CREATE_DEBIT_NOTE", "Create Debit Note", "DEBIT_NOTE"},
+                new Object[]{"EDIT_DEBIT_NOTE", "Edit Debit Note", "DEBIT_NOTE"},
+                new Object[]{"APPROVE_DEBIT_NOTE", "Approve Debit Note", "DEBIT_NOTE"},
+                new Object[]{"POST_DEBIT_NOTE", "Post Debit Note", "DEBIT_NOTE"},
+                new Object[]{"CANCEL_DEBIT_NOTE", "Cancel Debit Note", "DEBIT_NOTE"},
+                new Object[]{"DELETE_DEBIT_NOTE", "Delete Debit Note", "DEBIT_NOTE"},
+
+
                 new Object[]{"VIEW_PARTY", "View Party", "PARTY"},
                 new Object[]{"CREATE_PARTY", "Create Party", "PARTY"},
                 new Object[]{"EDIT_PARTY", "Edit Party", "PARTY"},

@@ -7,5 +7,7 @@ public enum JournalSourceType {
     PAYMENT,
     BANK_TRANSACTION,
     EXPENSE_CLAIM,
-    CREDIT_NOTE
+    CREDIT_NOTE,
+    DEBIT_NOTE,
+
 }

@@ -1,11 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, WritableSignal, computed, signal } from '@angular/core';
-import { Observable, finalize, tap } from 'rxjs';
+import { Observable, finalize, map, tap } from 'rxjs';
 
 import { APP_CONFIG } from '../config/app.config';
 import { STORAGE_KEYS } from '../constants/storage.constants';
 import { ApiResponse } from '../models/api-response.model';
 import {
+  CurrentUserProfile,
   ForgotPasswordRequest,
   LoginRequest,
   LoginResponse,
@@ -68,6 +69,32 @@ export class AuthService {
 
         this.storage.set(STORAGE_KEYS.CURRENT_USER, user);
         this.currentUserSignal.set(user);
+      }),
+    );
+  }
+
+  // Full profile (real name, roles, permissions) for the logged-in user.
+  // Login response only carries id/name/email — this fills in the rest.
+  getMe(): Observable<ApiResponse<CurrentUserProfile>> {
+    return this.http.get<ApiResponse<CurrentUserProfile>>(`${this.baseUrl}/me`);
+  }
+
+  // Fetches the full profile and updates stored/in-memory current user.
+  refreshCurrentUser(): Observable<CurrentUser> {
+    return this.getMe().pipe(
+      map((res) => {
+        const profile = res.data;
+        const user: CurrentUser = {
+          id: profile.id,
+          name: profile.name,
+          email: profile.email,
+          status: profile.status,
+          roles: profile.roles,
+          permissions: profile.permissions,
+        };
+        this.storage.set(STORAGE_KEYS.CURRENT_USER, user);
+        this.currentUserSignal.set(user);
+        return user;
       }),
     );
   }
