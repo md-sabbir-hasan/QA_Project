@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { APP_CONFIG } from '../../../core/config/app.config';
 import { ApiResponse } from '../../../core/models/api-response.model';
-import { PaymentRequest, PaymentResponse } from '../models/payment.model';
+import { PartyOutstandingSummary, PaymentRequest, PaymentResponse, PaymentType } from '../models/payment.model';
 
 @Injectable({
   providedIn: 'root',
@@ -23,9 +23,7 @@ export class PaymentService {
   }
 
   getByParty(partyId: number): Observable<ApiResponse<PaymentResponse[]>> {
-    return this.http.get<ApiResponse<PaymentResponse[]>>(
-      `${this.baseUrl}/party/${partyId}`
-    );
+    return this.http.get<ApiResponse<PaymentResponse[]>>(`${this.baseUrl}/party/${partyId}`);
   }
 
   create(request: PaymentRequest): Observable<ApiResponse<PaymentResponse>> {
@@ -33,22 +31,28 @@ export class PaymentService {
   }
 
   post(id: number): Observable<ApiResponse<PaymentResponse>> {
-    return this.http.post<ApiResponse<PaymentResponse>>(
-      `${this.baseUrl}/${id}/post`,
-      {}
-    );
+    return this.http.post<ApiResponse<PaymentResponse>>(`${this.baseUrl}/${id}/post`, {});
   }
 
   cancel(id: number): Observable<ApiResponse<PaymentResponse>> {
-    return this.http.post<ApiResponse<PaymentResponse>>(
-      `${this.baseUrl}/${id}/cancel`,
-      {}
-    );
+    return this.http.post<ApiResponse<PaymentResponse>>(`${this.baseUrl}/${id}/cancel`, {});
   }
 
   downloadReceipt(id: number): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/${id}/receipt`, {
       responseType: 'blob',
+    });
+  }
+
+  getOutstandingSummary(
+    partyId: number,
+    paymentType: PaymentType,
+  ): Observable<PartyOutstandingSummary> {
+    return this.http.get<PartyOutstandingSummary>(`${this.baseUrl}/outstanding-summary`, {
+      params: {
+        partyId: partyId.toString(),
+        paymentType,
+      },
     });
   }
 }

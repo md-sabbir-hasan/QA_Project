@@ -1,5 +1,6 @@
 package com.nexaerp.payment;
 
+import com.nexaerp.payment.dto.PartyOutstandingSummaryDto;
 import com.nexaerp.payment.dto.PaymentRequestDto;
 import com.nexaerp.payment.dto.PaymentResponseDto;
 
@@ -19,4 +20,10 @@ public interface PaymentService {
 
     // Reverses journal entry and undo invoice/bill due amount changes if already posted
     PaymentResponseDto cancel(Long id);
+
+    // Returns customer invoice or vendor bill outstanding summary
+    PartyOutstandingSummaryDto getOutstandingSummary(
+            Long partyId,
+            PaymentType paymentType
+    );
 }

@@ -1,24 +1,11 @@
-export type PaymentType =
-  | 'RECEIPT'
-  | 'PAYMENT';
+export type PaymentType = 'RECEIPT' | 'PAYMENT';
 
-export type PaymentStatus =
-  | 'DRAFT'
-  | 'POSTED'
-  | 'CANCELLED';
+export type PaymentStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 
 export type PaymentMethod =
-  | 'CASH'
-  | 'BANK_TRANSFER'
-  | 'CHEQUE'
-  | 'BKASH'
-  | 'NAGAD'
-  | 'ROCKET'
-  | 'CARD';
+  'CASH' | 'BANK_TRANSFER' | 'CHEQUE' | 'BKASH' | 'NAGAD' | 'ROCKET' | 'CARD';
 
-export type PaymentReferenceType =
-  | 'INVOICE'
-  | 'VENDOR_BILL';
+export type PaymentReferenceType = 'INVOICE' | 'VENDOR_BILL';
 
 export interface PaymentAllocationRequest {
   referenceType: PaymentReferenceType;
@@ -96,4 +83,13 @@ export interface PaymentResponse {
   updatedAt: string;
 
   allocations: PaymentAllocationResponse[];
+}
+
+export interface PartyOutstandingSummary {
+  partyId: number;
+  partyName: string;
+  totalAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  documentCount: number;
 }

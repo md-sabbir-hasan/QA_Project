@@ -14,10 +14,7 @@ import com.nexaerp.journal.*;
 import com.nexaerp.party.Party;
 import com.nexaerp.party.PartyRepository;
 import com.nexaerp.party.PartyType;
-import com.nexaerp.payment.dto.PaymentAllocationRequestDto;
-import com.nexaerp.payment.dto.PaymentAllocationResponseDto;
-import com.nexaerp.payment.dto.PaymentRequestDto;
-import com.nexaerp.payment.dto.PaymentResponseDto;
+import com.nexaerp.payment.dto.*;
 import com.nexaerp.security.CurrentUserService;
 import com.nexaerp.security.MakerCheckerService;
 import com.nexaerp.settings.SettingKey;
@@ -140,6 +137,99 @@ public class PaymentServiceImpl implements PaymentService {
                 .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PartyOutstandingSummaryDto getOutstandingSummary(
+            Long partyId,
+            PaymentType paymentType
+    ) {
+        Party party = partyRepository.findById(partyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Party not found"));
+
+        validatePartyForPayment(paymentType, party);
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal paidAmount = BigDecimal.ZERO;
+        BigDecimal dueAmount = BigDecimal.ZERO;
+        long documentCount = 0L;
+
+        if (paymentType == PaymentType.RECEIPT) {
+
+            List<Invoice> invoices = invoiceRepository.findByPartyId(partyId)
+                    .stream()
+                    .filter(invoice ->
+                            invoice.getStatus() == InvoiceStatus.POSTED
+                                    || invoice.getStatus() == InvoiceStatus.PARTIAL
+                                    || invoice.getStatus() == InvoiceStatus.PAID
+                    )
+                    .toList();
+
+            totalAmount = invoices.stream()
+                    .map(Invoice::getGrandTotal)
+                    .filter(java.util.Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            paidAmount = invoices.stream()
+                    .map(Invoice::getPaidAmount)
+                    .filter(java.util.Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            dueAmount = invoices.stream()
+                    .map(Invoice::getDueAmount)
+                    .filter(java.util.Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            documentCount = invoices.stream()
+                    .filter(invoice ->
+                            invoice.getDueAmount() != null
+                                    && invoice.getDueAmount().compareTo(BigDecimal.ZERO) > 0
+                    )
+                    .count();
+
+        } else if (paymentType == PaymentType.PAYMENT) {
+
+            List<VendorBill> bills = vendorBillRepository.findByPartyId(partyId)
+                    .stream()
+                    .filter(bill ->
+                            bill.getStatus() == VendorBillStatus.POSTED
+                                    || bill.getStatus() == VendorBillStatus.PARTIAL
+                                    || bill.getStatus() == VendorBillStatus.PAID
+                    )
+                    .toList();
+
+            totalAmount = bills.stream()
+                    .map(VendorBill::getNetPayable)
+                    .filter(java.util.Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            paidAmount = bills.stream()
+                    .map(VendorBill::getPaidAmount)
+                    .filter(java.util.Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            dueAmount = bills.stream()
+                    .map(VendorBill::getDueAmount)
+                    .filter(java.util.Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            documentCount = bills.stream()
+                    .filter(bill ->
+                            bill.getDueAmount() != null
+                                    && bill.getDueAmount().compareTo(BigDecimal.ZERO) > 0
+                    )
+                    .count();
+        }
+
+        return PartyOutstandingSummaryDto.builder()
+                .partyId(party.getId())
+                .partyName(party.getName())
+                .totalAmount(totalAmount)
+                .paidAmount(paidAmount)
+                .dueAmount(dueAmount)
+                .documentCount(documentCount)
+                .build();
     }
 
     @Override

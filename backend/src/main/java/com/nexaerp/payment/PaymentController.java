@@ -1,6 +1,7 @@
 package com.nexaerp.payment;
 
 import com.nexaerp.common.response.ApiResponse;
+import com.nexaerp.payment.dto.PartyOutstandingSummaryDto;
 import com.nexaerp.payment.dto.PaymentRequestDto;
 import com.nexaerp.payment.dto.PaymentResponseDto;
 import jakarta.validation.Valid;
@@ -46,6 +47,16 @@ public class PaymentController {
             @PathVariable Long partyId) {
         return ResponseEntity.ok(ApiResponse.success(
                 paymentService.getByParty(partyId)));
+    }
+
+    @GetMapping("/outstanding-summary")
+    public ResponseEntity<PartyOutstandingSummaryDto> getOutstandingSummary(
+            @RequestParam Long partyId,
+            @RequestParam PaymentType paymentType
+    ) {
+        return ResponseEntity.ok(
+                paymentService.getOutstandingSummary(partyId, paymentType)
+        );
     }
 
     @PostMapping("/{id}/post")
