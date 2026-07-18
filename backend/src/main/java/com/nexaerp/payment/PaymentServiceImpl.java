@@ -5,6 +5,8 @@ import com.nexaerp.account.AccountRepository;
 import com.nexaerp.accountingperiod.AccountingPeriodService;
 import com.nexaerp.audit.AuditAction;
 import com.nexaerp.audit.AuditLogService;
+import com.nexaerp.banking.entity.BankAccount;
+import com.nexaerp.banking.repository.BankAccountRepository;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.invoice.Invoice;
@@ -50,6 +52,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final AccountingPeriodService accountingPeriodService;
     private final MakerCheckerService makerCheckerService;
     private final CurrentUserService currentUserService;
+    private final BankAccountRepository bankAccountRepository;
 
 
     @Override
@@ -307,6 +310,13 @@ public class PaymentServiceImpl implements PaymentService {
 
         createJournalEntry(payment);
 
+        updateLinkedBankBalance(
+                payment.getAccount(),
+                payment.getAmount(),
+                payment.getPaymentType(),
+                false
+        );
+
         List<PaymentAllocation> allocations =
                 paymentAllocationRepository.findByPaymentId(
                         payment.getId()
@@ -364,6 +374,13 @@ public class PaymentServiceImpl implements PaymentService {
             );
 
             reverseJournalEntry(payment, reversalDate);
+
+            updateLinkedBankBalance(
+                    payment.getAccount(),
+                    payment.getAmount(),
+                    payment.getPaymentType(),
+                    true
+            );
 
             List<PaymentAllocation> allocations =
                     paymentAllocationRepository.findByPaymentId(
@@ -754,6 +771,49 @@ public class PaymentServiceImpl implements PaymentService {
         if (account.getCurrentBalance() == null) {
             throw new BusinessRuleException("Selected payment account balance is invalid");
         }
+    }
+
+
+    // ---------bank balance update
+
+    private void updateLinkedBankBalance(
+            Account paymentAccount,
+            BigDecimal amount,
+            PaymentType paymentType,
+            boolean reversal
+    ) {
+        BankAccount bankAccount = bankAccountRepository
+                .findByCoaAccountId(paymentAccount.getId())
+                .orElseThrow(() -> new BusinessRuleException(
+                        "No bank account is linked with payment account: "
+                                + paymentAccount.getCode()
+                ));
+
+        BigDecimal currentBalance = bankAccount.getCurrentBalance() != null
+                ? bankAccount.getCurrentBalance()
+                : BigDecimal.ZERO;
+
+        BigDecimal adjustment;
+
+        if (paymentType == PaymentType.RECEIPT) {
+            adjustment = reversal ? amount.negate() : amount;
+        } else {
+            adjustment = reversal ? amount : amount.negate();
+        }
+
+        BigDecimal newBalance = currentBalance.add(adjustment);
+
+        if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessRuleException(
+                    "Insufficient bank balance. Available: "
+                            + currentBalance
+                            + ", required: "
+                            + amount
+            );
+        }
+
+        bankAccount.setCurrentBalance(newBalance);
+        bankAccountRepository.save(bankAccount);
     }
 
 

@@ -13,10 +13,19 @@ import java.util.Optional;
 
 @Repository
 public interface BankAccountRepository extends JpaRepository<BankAccount, Long> {
+
     List<BankAccount> findByIsActive(Boolean isActive);
+
     List<BankAccount> findByAccountType(BankAccountType accountType);
+
     Optional<BankAccount> findTopByOrderByIdDesc();
 
-    @Query("SELECT COALESCE(SUM(a.currentBalance), 0) FROM BankAccount a WHERE a.isActive = true")
+    Optional<BankAccount> findByCoaAccountId(Long coaAccountId);
+
+    @Query("""
+        SELECT COALESCE(SUM(a.currentBalance), 0)
+        FROM BankAccount a
+        WHERE a.isActive = true
+    """)
     BigDecimal sumActiveBalances();
 }
