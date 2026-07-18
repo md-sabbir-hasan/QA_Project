@@ -6,7 +6,10 @@ import com.nexaerp.accountingperiod.AccountingPeriodService;
 import com.nexaerp.audit.AuditAction;
 import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.banking.entity.BankAccount;
+import com.nexaerp.banking.entity.BankTransaction;
+import com.nexaerp.banking.enums.TransactionType;
 import com.nexaerp.banking.repository.BankAccountRepository;
+import com.nexaerp.banking.repository.BankTransactionRepository;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.invoice.Invoice;
@@ -53,6 +56,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final MakerCheckerService makerCheckerService;
     private final CurrentUserService currentUserService;
     private final BankAccountRepository bankAccountRepository;
+    private final BankTransactionRepository bankTransactionRepository;
 
 
     @Override
@@ -318,6 +322,8 @@ public class PaymentServiceImpl implements PaymentService {
                 payment.getPaymentType(),
                 false
         );
+
+        createBankTransactionForPayment(payment);
 
         List<PaymentAllocation> allocations =
                 paymentAllocationRepository.findByPaymentId(
@@ -852,6 +858,55 @@ public class PaymentServiceImpl implements PaymentService {
                             + " BDT"
             );
         }
+    }
+
+    // -----------createBankTransactionForPayment----------
+    private void createBankTransactionForPayment(Payment payment) {
+
+        if (bankTransactionRepository
+                .findByReferenceNumber(payment.getPaymentNumber())
+                .isPresent()) {
+
+            throw new BusinessRuleException(
+                    "Bank transaction already exists for payment: "
+                            + payment.getPaymentNumber()
+            );
+        }
+
+        BankAccount bankAccount = bankAccountRepository
+                .findByCoaAccountId(payment.getAccount().getId())
+                .orElseThrow(() -> new BusinessRuleException(
+                        "No bank account is linked with COA account: "
+                                + payment.getAccount().getCode()
+                ));
+
+        BankTransaction transaction = new BankTransaction();
+
+        transaction.setBankAccount(bankAccount);
+        transaction.setTransactionDate(payment.getPaymentDate());
+        transaction.setAmount(payment.getAmount());
+
+        transaction.setTransactionType(
+                payment.getPaymentType() == PaymentType.RECEIPT
+                        ? TransactionType.CREDIT
+                        : TransactionType.DEBIT
+        );
+
+        transaction.setReferenceNumber(payment.getPaymentNumber());
+
+        transaction.setDescription(
+                payment.getPaymentType() == PaymentType.RECEIPT
+                        ? "Customer receipt - " + payment.getPaymentNumber()
+                        : "Vendor payment - " + payment.getPaymentNumber()
+        );
+
+        transaction.setReconciled(false);
+        transaction.setVoided(false);
+        transaction.setTransactionNumber(
+                "BT-" + payment.getPaymentNumber()
+        );
+
+        bankTransactionRepository.save(transaction);
     }
 
 

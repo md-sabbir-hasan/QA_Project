@@ -34,4 +34,7 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
             "WHERE t.bankAccount.id = :bankAccountId AND t.voided = false AND t.transactionDate <= :asOfDate")
     BigDecimal sumNetMovementUpTo(@Param("bankAccountId") Long bankAccountId,
                                   @Param("asOfDate") LocalDate asOfDate);
+
+
+    Optional<BankTransaction> findByReferenceNumber(String referenceNumber);
 }

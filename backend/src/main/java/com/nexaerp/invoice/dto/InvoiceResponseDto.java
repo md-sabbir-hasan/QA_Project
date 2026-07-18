@@ -22,8 +22,6 @@ public class InvoiceResponseDto {
     private Long partyId;
     private String partyName;
     private InvoiceStatus status;
-    private String currencyCode;
-    private BigDecimal exchangeRate;
     private Integer paymentTerms;
     private String reference;
     private String notes;
@@ -43,6 +41,16 @@ public class InvoiceResponseDto {
     private LocalDateTime postedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    private String currencyCode;
+
+    private BigDecimal exchangeRate;
+
+    private BigDecimal baseGrandTotal;
+
+    private BigDecimal basePaidAmount;
+
+    private BigDecimal baseDueAmount;
 
     private List<InvoiceItemResponseDto> items;
 }

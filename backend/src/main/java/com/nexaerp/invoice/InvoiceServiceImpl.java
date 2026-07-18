@@ -7,6 +7,8 @@ import com.nexaerp.audit.AuditAction;
 import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
+import com.nexaerp.currency.service.CurrencyService;
+import com.nexaerp.currency.service.ExchangeRateService;
 import com.nexaerp.invoice.dto.InvoiceItemRequestDto;
 import com.nexaerp.invoice.dto.InvoiceItemResponseDto;
 import com.nexaerp.invoice.dto.InvoiceRequestDto;
@@ -27,6 +29,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,6 +48,8 @@ public class InvoiceServiceImpl implements InvoiceService{
     private final AccountingPeriodService accountingPeriodService;
     private final MakerCheckerService makerCheckerService;
     private final CurrentUserService currentUserService;
+    private final ExchangeRateService exchangeRateService;
+    private final CurrencyService currencyService;
 
     @Override
     @Transactional
@@ -80,6 +85,40 @@ public class InvoiceServiceImpl implements InvoiceService{
         // Totals calculate
         calculateAndSaveTotals(saved, items);
 
+
+        // currency
+        String baseCurrency =
+                currencyService.getBaseCurrency().getCode();
+
+        String invoiceCurrency =
+                request.getCurrencyCode() == null
+                        || request.getCurrencyCode().isBlank()
+                        ? baseCurrency
+                        : request.getCurrencyCode()
+                        .trim()
+                        .toUpperCase();
+
+        BigDecimal exchangeRate =
+                exchangeRateService.getRateValue(
+                        invoiceCurrency,
+                        baseCurrency,
+                        request.getInvoiceDate()
+                );
+
+        invoice.setCurrencyCode(invoiceCurrency);
+        invoice.setExchangeRate(exchangeRate);
+
+        BigDecimal baseGrandTotal =
+                invoice.getGrandTotal()
+                        .multiply(exchangeRate)
+                        .setScale(2, RoundingMode.HALF_UP);
+
+        invoice.setBaseGrandTotal(baseGrandTotal);
+        invoice.setBasePaidAmount(BigDecimal.ZERO);
+        invoice.setBaseDueAmount(baseGrandTotal);
+
+
+
         // Audit Log
 
         auditLogService.log(
@@ -96,34 +135,105 @@ public class InvoiceServiceImpl implements InvoiceService{
     @Override
     @Transactional
     public InvoiceResponseDto update(Long id, InvoiceRequestDto request) {
-        Invoice invoice = invoiceRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found"));
 
-        if (!invoice.getStatus().equals(InvoiceStatus.DRAFT)) {
-            throw new BusinessRuleException("Only DRAFT invoices can be updated");
+        Invoice invoice = invoiceRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Invoice not found"));
+
+        if (!InvoiceStatus.DRAFT.equals(invoice.getStatus())) {
+            throw new BusinessRuleException(
+                    "Only DRAFT invoices can be updated"
+            );
         }
 
         Party party = partyRepository.findById(request.getPartyId())
-                .orElseThrow(() -> new ResourceNotFoundException("Party not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Party not found"));
 
         invoice.setParty(party);
         invoice.setInvoiceDate(request.getInvoiceDate());
-        invoice.setPaymentTerms(request.getPaymentTerms() != null ? request.getPaymentTerms() : 30);
-        invoice.setDueDate(request.getInvoiceDate().plusDays(invoice.getPaymentTerms()));
-        invoice.setCurrencyCode(request.getCurrencyCode() != null ? request.getCurrencyCode() : "BDT");
+
+        invoice.setPaymentTerms(
+                request.getPaymentTerms() != null
+                        ? request.getPaymentTerms()
+                        : 30
+        );
+
+        invoice.setDueDate(
+                request.getInvoiceDate()
+                        .plusDays(invoice.getPaymentTerms())
+        );
+
         invoice.setReference(request.getReference());
         invoice.setNotes(request.getNotes());
 
-        // Important: orphanRemoval-safe replace
-        invoice.getItems().clear();
 
-        List<InvoiceItem> newItems = request.getItems().stream()
+        String baseCurrency = currencyService
+                .getBaseCurrency()
+                .getCode();
+
+        String invoiceCurrency =
+                request.getCurrencyCode() == null
+                        || request.getCurrencyCode().isBlank()
+                        ? baseCurrency
+                        : request.getCurrencyCode()
+                        .trim()
+                        .toUpperCase();
+
+       
+        BigDecimal exchangeRate =
+                exchangeRateService.getRateValue(
+                        invoiceCurrency,
+                        baseCurrency,
+                        request.getInvoiceDate()
+                );
+
+        invoice.setCurrencyCode(invoiceCurrency);
+        invoice.setExchangeRate(exchangeRate);
+
+        /*
+         * orphanRemoval-safe item replacement
+         */
+        if (invoice.getItems() == null) {
+            invoice.setItems(new ArrayList<>());
+        } else {
+            invoice.getItems().clear();
+        }
+
+        List<InvoiceItem> newItems = request.getItems()
+                .stream()
                 .map(itemDto -> buildItem(itemDto, invoice))
                 .collect(Collectors.toList());
 
         invoice.getItems().addAll(newItems);
 
+        /*
+         * Foreign/original currency totals
+         */
         calculateTotalsOnly(invoice, newItems);
+
+        /*
+         * Base currency totals
+         */
+        BigDecimal baseGrandTotal = invoice.getGrandTotal()
+                .multiply(exchangeRate)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal basePaidAmount = invoice.getPaidAmount() != null
+                ? invoice.getPaidAmount()
+                .multiply(exchangeRate)
+                .setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        BigDecimal baseDueAmount = invoice.getDueAmount() != null
+                ? invoice.getDueAmount()
+                .multiply(exchangeRate)
+                .setScale(2, RoundingMode.HALF_UP)
+                : baseGrandTotal.subtract(basePaidAmount);
+
+        invoice.setBaseGrandTotal(baseGrandTotal);
+        invoice.setBasePaidAmount(basePaidAmount);
+        invoice.setBaseDueAmount(baseDueAmount);
 
         Invoice saved = invoiceRepository.save(invoice);
 
@@ -358,7 +468,41 @@ public class InvoiceServiceImpl implements InvoiceService{
         Account vatPayable = systemSettingsService.getAccount(
                 SettingKey.DEFAULT_VAT_PAYABLE);
 
-        //Make Journal Entry
+        BigDecimal exchangeRate = invoice.getExchangeRate() != null
+                ? invoice.getExchangeRate()
+                : BigDecimal.ONE;
+
+        BigDecimal baseGrandTotal = invoice.getBaseGrandTotal();
+
+        if (baseGrandTotal == null
+                || baseGrandTotal.compareTo(BigDecimal.ZERO) <= 0) {
+
+            baseGrandTotal = invoice.getGrandTotal()
+                    .multiply(exchangeRate)
+                    .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        BigDecimal originalRevenueAmount = invoice.getSubTotal()
+                .subtract(invoice.getDiscountAmount());
+
+        BigDecimal baseRevenueAmount = originalRevenueAmount
+                .multiply(exchangeRate)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal baseVatAmount = invoice.getVatAmount()
+                .multiply(exchangeRate)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        /*
+         * Rounding difference হলে AR এবং Credit side balanced রাখবে।
+         *
+         * Revenue + VAT যেন সবসময় Base Grand Total-এর সমান হয়।
+         */
+        baseRevenueAmount = baseGrandTotal
+                .subtract(baseVatAmount)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        // Make Journal Entry
         JournalEntry entry = new JournalEntry();
         entry.setEntryNumber(generateJournalNumber());
         entry.setDate(invoice.getInvoiceDate());
@@ -367,49 +511,73 @@ public class InvoiceServiceImpl implements InvoiceService{
         entry.setStatus(JournalStatus.POSTED);
         entry.setSourceType(JournalSourceType.INVOICE);
         entry.setSourceId(invoice.getId());
-        entry.setTotalAmount(invoice.getGrandTotal());
+
+        // Journal always stores base currency amount
+        entry.setTotalAmount(baseGrandTotal);
+
         entry.setReferenceNumber(invoice.getInvoiceNumber());
 
         JournalEntry saved = journalEntryRepository.save(entry);
 
-        //Make Lines
         // Debit — Accounts Receivable
         JournalLine line1 = new JournalLine();
         line1.setJournalEntry(saved);
         line1.setAccount(receivable);
-        line1.setDebit(invoice.getGrandTotal());
+        line1.setDebit(baseGrandTotal);
         line1.setCredit(BigDecimal.ZERO);
-        line1.setDescription("Invoice - " + invoice.getInvoiceNumber());
+        line1.setDescription(
+                "Invoice - " + invoice.getInvoiceNumber()
+                        + " [" + invoice.getCurrencyCode()
+                        + " @ " + exchangeRate + "]"
+        );
 
         // Credit — Sales Revenue
-        BigDecimal revenueAmount = invoice.getSubTotal().subtract(invoice.getDiscountAmount());
         JournalLine line2 = new JournalLine();
         line2.setJournalEntry(saved);
         line2.setAccount(salesRevenue);
         line2.setDebit(BigDecimal.ZERO);
-        line2.setCredit(revenueAmount);
-        line2.setDescription("Sales Revenue - " + invoice.getInvoiceNumber());
+        line2.setCredit(baseRevenueAmount);
+        line2.setDescription(
+                "Sales Revenue - " + invoice.getInvoiceNumber()
+        );
 
-        // Credit — VAT Payable (If vat Available)
         journalLineRepository.save(line1);
         journalLineRepository.save(line2);
 
-        if (invoice.getVatAmount().compareTo(BigDecimal.ZERO) > 0) {
+        // Credit — VAT Payable
+        if (baseVatAmount.compareTo(BigDecimal.ZERO) > 0) {
+
             JournalLine line3 = new JournalLine();
             line3.setJournalEntry(saved);
             line3.setAccount(vatPayable);
             line3.setDebit(BigDecimal.ZERO);
-            line3.setCredit(invoice.getVatAmount());
-            line3.setDescription("VAT - " + invoice.getInvoiceNumber());
+            line3.setCredit(baseVatAmount);
+            line3.setDescription(
+                    "VAT - " + invoice.getInvoiceNumber()
+            );
+
             journalLineRepository.save(line3);
         }
 
-        // Account Balance update
-        updateBalance(receivable, invoice.getGrandTotal(), BigDecimal.ZERO);
-        updateBalance(salesRevenue, BigDecimal.ZERO, revenueAmount);
+        // Account balances are also stored in base currency
+        updateBalance(
+                receivable,
+                baseGrandTotal,
+                BigDecimal.ZERO
+        );
 
-        if (invoice.getVatAmount().compareTo(BigDecimal.ZERO) > 0) {
-            updateBalance(vatPayable, BigDecimal.ZERO, invoice.getVatAmount());
+        updateBalance(
+                salesRevenue,
+                BigDecimal.ZERO,
+                baseRevenueAmount
+        );
+
+        if (baseVatAmount.compareTo(BigDecimal.ZERO) > 0) {
+            updateBalance(
+                    vatPayable,
+                    BigDecimal.ZERO,
+                    baseVatAmount
+            );
         }
     }
 
@@ -561,6 +729,9 @@ public class InvoiceServiceImpl implements InvoiceService{
                 .status(invoice.getStatus())
                 .currencyCode(invoice.getCurrencyCode())
                 .exchangeRate(invoice.getExchangeRate())
+                .baseGrandTotal(invoice.getBaseGrandTotal())
+                .basePaidAmount(invoice.getBasePaidAmount())
+                .baseDueAmount(invoice.getBaseDueAmount())
                 .paymentTerms(invoice.getPaymentTerms())
                 .reference(invoice.getReference())
                 .notes(invoice.getNotes())

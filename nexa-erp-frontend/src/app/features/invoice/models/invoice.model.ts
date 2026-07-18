@@ -24,23 +24,34 @@ export interface Invoice {
   partyId: number;
   partyName: string;
   status: InvoiceStatus;
+
+  // Currency
   currencyCode: string;
   exchangeRate: number;
+
+  // Base Currency (BDT)
+  baseGrandTotal: number;
+  basePaidAmount: number;
+  baseDueAmount: number;
+
   paymentTerms: number;
   reference: string | null;
   notes: string | null;
   cancelledReason: CancelledReason | null;
   pdfGenerated: boolean;
   printCount: number;
+
   subTotal: number;
   discountAmount: number;
   vatAmount: number;
   grandTotal: number;
   paidAmount: number;
   dueAmount: number;
+
   postedAt: string | null;
   createdAt: string;
   updatedAt: string;
+
   items: InvoiceItem[];
 }
 
