@@ -307,6 +307,8 @@ public class BankReconciliationServiceImpl implements BankReconciliationService 
                 return lines;
             }
 
+            header = header.strip().replace("\uFEFF", "");
+
             List<String> columns = splitCsvRow(header).stream()
                     .map(c -> c.trim().toLowerCase())
                     .collect(Collectors.toList());

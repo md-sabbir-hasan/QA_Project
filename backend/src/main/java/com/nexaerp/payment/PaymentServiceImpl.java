@@ -308,6 +308,8 @@ public class PaymentServiceImpl implements PaymentService {
                 payment.getPaymentDate()
         );
 
+        validateSufficientPaymentBalance(payment);
+
         createJournalEntry(payment);
 
         updateLinkedBankBalance(
@@ -814,6 +816,42 @@ public class PaymentServiceImpl implements PaymentService {
 
         bankAccount.setCurrentBalance(newBalance);
         bankAccountRepository.save(bankAccount);
+    }
+
+    // sufficient Balance validation
+
+    private void validateSufficientPaymentBalance(Payment payment) {
+
+        if (payment.getPaymentType() != PaymentType.PAYMENT) {
+            return;
+        }
+
+        BankAccount bankAccount = bankAccountRepository
+                .findByCoaAccountId(payment.getAccount().getId())
+                .orElseThrow(() -> new BusinessRuleException(
+                        "No bank account is linked with payment account: "
+                                + payment.getAccount().getCode()
+                ));
+
+        BigDecimal availableBalance =
+                bankAccount.getCurrentBalance() != null
+                        ? bankAccount.getCurrentBalance()
+                        : BigDecimal.ZERO;
+
+        BigDecimal paymentAmount =
+                payment.getAmount() != null
+                        ? payment.getAmount()
+                        : BigDecimal.ZERO;
+
+        if (availableBalance.compareTo(paymentAmount) < 0) {
+            throw new BusinessRuleException(
+                    "Insufficient balance. Available: "
+                            + availableBalance
+                            + " BDT, required: "
+                            + paymentAmount
+                            + " BDT"
+            );
+        }
     }
 
 
