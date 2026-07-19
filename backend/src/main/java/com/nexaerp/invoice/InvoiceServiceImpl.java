@@ -57,6 +57,7 @@ public class InvoiceServiceImpl implements InvoiceService{
         Party party = partyRepository.findById(request.getPartyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Party not found"));
 
+
         Invoice invoice = new Invoice();
         invoice.setInvoiceNumber(generateInvoiceNumber());
         invoice.setInvoiceDate(request.getInvoiceDate());
@@ -180,7 +181,7 @@ public class InvoiceServiceImpl implements InvoiceService{
                         .trim()
                         .toUpperCase();
 
-       
+
         BigDecimal exchangeRate =
                 exchangeRateService.getRateValue(
                         invoiceCurrency,
@@ -364,7 +365,7 @@ public class InvoiceServiceImpl implements InvoiceService{
         if (invoice.getStatus().equals(InvoiceStatus.POSTED)) {
             /*
              * The reversal journal uses today's date.
-             * Therefore today's accounting period must be open.
+             *  today's accounting period must be open.
              */
             accountingPeriodService.validatePostingDate(
                     LocalDate.now()
@@ -377,6 +378,7 @@ public class InvoiceServiceImpl implements InvoiceService{
         invoice.setStatus(InvoiceStatus.CANCELLED);
         invoice.setCancelledReason(reason);
         invoice.setDueAmount(BigDecimal.ZERO);
+        invoice.setBaseDueAmount(BigDecimal.ZERO);
 
         Invoice saved = invoiceRepository.save(invoice);
 

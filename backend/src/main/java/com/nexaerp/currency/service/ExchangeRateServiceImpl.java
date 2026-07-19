@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -29,11 +30,13 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
     private final ExchangeRateRepository exchangeRateRepository;
     private final CurrencyRepository currencyRepository;
 
+    /*
+     * Create exchange rate
+     */
     @Override
     public ExchangeRateResponseDto create(
             ExchangeRateRequestDto request
     ) {
-
         Currency fromCurrency =
                 getActiveCurrency(request.getFromCurrency());
 
@@ -42,12 +45,15 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
 
         validateCurrencyPair(fromCurrency, toCurrency);
 
-        if (exchangeRateRepository
-                .existsByFromCurrencyIdAndToCurrencyIdAndEffectiveDate(
-                        fromCurrency.getId(),
-                        toCurrency.getId(),
-                        request.getEffectiveDate()
-                )) {
+        boolean alreadyExists =
+                exchangeRateRepository
+                        .existsByFromCurrencyIdAndToCurrencyIdAndEffectiveDate(
+                                fromCurrency.getId(),
+                                toCurrency.getId(),
+                                request.getEffectiveDate()
+                        );
+
+        if (alreadyExists) {
             throw new BusinessRuleException(
                     "Exchange rate already exists for "
                             + fromCurrency.getCode()
@@ -66,17 +72,20 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
                 .source(request.getSource())
                 .build();
 
-        return toResponse(
-                exchangeRateRepository.save(exchangeRate)
-        );
+        ExchangeRate saved =
+                exchangeRateRepository.save(exchangeRate);
+
+        return toResponse(saved);
     }
 
+    /*
+     * Update exchange rate
+     */
     @Override
     public ExchangeRateResponseDto update(
             Long id,
             ExchangeRateRequestDto request
     ) {
-
         ExchangeRate exchangeRate = getEntity(id);
 
         Currency fromCurrency =
@@ -106,49 +115,56 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
 
         exchangeRate.setFromCurrency(fromCurrency);
         exchangeRate.setToCurrency(toCurrency);
-        exchangeRate.setRate(normalizeRate(request.getRate()));
-        exchangeRate.setEffectiveDate(request.getEffectiveDate());
+        exchangeRate.setRate(
+                normalizeRate(request.getRate())
+        );
+        exchangeRate.setEffectiveDate(
+                request.getEffectiveDate()
+        );
         exchangeRate.setSource(request.getSource());
 
-        return toResponse(
-                exchangeRateRepository.save(exchangeRate)
-        );
+        ExchangeRate updated =
+                exchangeRateRepository.save(exchangeRate);
+
+        return toResponse(updated);
     }
 
+    /*
+     * Get exchange rate by ID
+     */
     @Override
     @Transactional(readOnly = true)
     public ExchangeRateResponseDto getById(Long id) {
         return toResponse(getEntity(id));
     }
 
+    /*
+     * Get the latest applicable exchange rate.
+     *
+     * Important:
+     * Future-dated rates will not be returned.
+     */
     @Override
     @Transactional(readOnly = true)
     public ExchangeRateResponseDto getLatestRate(
             String fromCurrency,
             String toCurrency
     ) {
-
-        if (sameCurrency(fromCurrency, toCurrency)) {
-            return buildSameCurrencyRate(
-                    fromCurrency,
-                    LocalDate.now()
-            );
-        }
-
-        return exchangeRateRepository
-                .findTopByFromCurrencyCodeIgnoreCaseAndToCurrencyCodeIgnoreCaseOrderByEffectiveDateDesc(
-                        normalize(fromCurrency),
-                        normalize(toCurrency)
-                )
-                .map(this::toResponse)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "No exchange rate found from "
-                                + fromCurrency
-                                + " to "
-                                + toCurrency
-                ));
+        return getRateForDate(
+                fromCurrency,
+                toCurrency,
+                LocalDate.now()
+        );
     }
 
+    /*
+     * Get applicable exchange rate for a specific date.
+     *
+     * Resolution order:
+     * 1. Same currency = 1
+     * 2. Direct exchange rate
+     * 3. Reverse exchange rate
+     */
     @Override
     @Transactional(readOnly = true)
     public ExchangeRateResponseDto getRateForDate(
@@ -156,34 +172,81 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
             String toCurrency,
             LocalDate date
     ) {
+        String from = normalize(fromCurrency);
+        String to = normalize(toCurrency);
 
         LocalDate rateDate =
                 date != null ? date : LocalDate.now();
 
-        if (sameCurrency(fromCurrency, toCurrency)) {
+        if (from.equals(to)) {
             return buildSameCurrencyRate(
-                    fromCurrency,
+                    from,
                     rateDate
             );
         }
 
-        return exchangeRateRepository
-                .findTopByFromCurrencyCodeIgnoreCaseAndToCurrencyCodeIgnoreCaseAndEffectiveDateLessThanEqualOrderByEffectiveDateDesc(
-                        normalize(fromCurrency),
-                        normalize(toCurrency),
-                        rateDate
-                )
-                .map(this::toResponse)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "No exchange rate found from "
-                                + fromCurrency
-                                + " to "
-                                + toCurrency
-                                + " on or before "
-                                + rateDate
-                ));
+        /*
+         * First try direct rate:
+         *
+         * Example:
+         * USD -> BDT
+         */
+        Optional<ExchangeRate> directRate =
+                exchangeRateRepository
+                        .findTopByFromCurrencyCodeIgnoreCaseAndToCurrencyCodeIgnoreCaseAndEffectiveDateLessThanEqualOrderByEffectiveDateDesc(
+                                from,
+                                to,
+                                rateDate
+                        );
+
+        if (directRate.isPresent()) {
+            return toResponse(directRate.get());
+        }
+
+        /*
+         * If direct rate is unavailable, try reverse:
+         *
+         * Requested:
+         * BDT -> USD
+         *
+         * Stored:
+         * USD -> BDT
+         *
+         * Result:
+         * 1 / stored rate
+         */
+        Optional<ExchangeRate> reverseRate =
+                exchangeRateRepository
+                        .findTopByFromCurrencyCodeIgnoreCaseAndToCurrencyCodeIgnoreCaseAndEffectiveDateLessThanEqualOrderByEffectiveDateDesc(
+                                to,
+                                from,
+                                rateDate
+                        );
+
+        if (reverseRate.isPresent()) {
+            return buildReverseRateResponse(
+                    from,
+                    to,
+                    reverseRate.get()
+            );
+        }
+
+        throw new ResourceNotFoundException(
+                "No exchange rate found from "
+                        + from
+                        + " to "
+                        + to
+                        + " on or before "
+                        + rateDate
+        );
     }
 
+    /*
+     * Get direct exchange-rate history.
+     *
+     * This returns only the stored direction.
+     * Example: USD -> BDT
+     */
     @Override
     @Transactional(readOnly = true)
     public List<ExchangeRateResponseDto> getHistory(
@@ -200,15 +263,22 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
                 .toList();
     }
 
+    /*
+     * Get all exchange rates
+     */
     @Override
     @Transactional(readOnly = true)
     public List<ExchangeRateResponseDto> getAll() {
-        return exchangeRateRepository.findAll()
+        return exchangeRateRepository
+                .findAll()
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
+    /*
+     * Return only the exchange-rate value
+     */
     @Override
     @Transactional(readOnly = true)
     public BigDecimal getRateValue(
@@ -216,11 +286,6 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
             String toCurrency,
             LocalDate date
     ) {
-
-        if (sameCurrency(fromCurrency, toCurrency)) {
-            return BigDecimal.ONE;
-        }
-
         return getRateForDate(
                 fromCurrency,
                 toCurrency,
@@ -228,6 +293,9 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
         ).getRate();
     }
 
+    /*
+     * Convert and return only converted amount
+     */
     @Override
     @Transactional(readOnly = true)
     public BigDecimal convertAmount(
@@ -236,7 +304,6 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
             BigDecimal amount,
             LocalDate date
     ) {
-
         validateAmount(amount);
 
         BigDecimal rate = getRateValue(
@@ -245,10 +312,17 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
                 date
         );
 
-        return amount.multiply(rate)
-                .setScale(AMOUNT_SCALE, RoundingMode.HALF_UP);
+        return amount
+                .multiply(rate)
+                .setScale(
+                        AMOUNT_SCALE,
+                        RoundingMode.HALF_UP
+                );
     }
 
+    /*
+     * Convert and return complete conversion information
+     */
     @Override
     @Transactional(readOnly = true)
     public CurrencyConversionDto convert(
@@ -257,15 +331,23 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
             BigDecimal amount,
             LocalDate date
     ) {
+        validateAmount(amount);
+
+        String from = normalize(fromCurrency);
+        String to = normalize(toCurrency);
 
         LocalDate rateDate =
                 date != null ? date : LocalDate.now();
 
-        BigDecimal rate = getRateValue(
-                fromCurrency,
-                toCurrency,
-                rateDate
-        );
+        ExchangeRateResponseDto applicableRate =
+                getRateForDate(
+                        from,
+                        to,
+                        rateDate
+                );
+
+        BigDecimal rate =
+                applicableRate.getRate();
 
         BigDecimal convertedAmount =
                 amount.multiply(rate)
@@ -275,95 +357,147 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
                         );
 
         return CurrencyConversionDto.builder()
-                .fromCurrency(normalize(fromCurrency))
-                .toCurrency(normalize(toCurrency))
+                .fromCurrency(from)
+                .toCurrency(to)
                 .originalAmount(amount)
                 .exchangeRate(rate)
                 .convertedAmount(convertedAmount)
-                .effectiveDate(rateDate)
+                .effectiveDate(
+                        applicableRate.getEffectiveDate()
+                )
                 .build();
     }
 
+    /*
+     * Delete exchange rate
+     */
     @Override
     public void delete(Long id) {
-        exchangeRateRepository.delete(getEntity(id));
+        ExchangeRate exchangeRate = getEntity(id);
+
+        exchangeRateRepository.delete(exchangeRate);
     }
 
+    /*
+     * Find active currency by code
+     */
     private Currency getActiveCurrency(String code) {
+        String normalizedCode = normalize(code);
 
-        Currency currency = currencyRepository
-                .findByCodeIgnoreCase(normalize(code))
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Currency not found: " + code
-                ));
+        Currency currency =
+                currencyRepository
+                        .findByCodeIgnoreCase(normalizedCode)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Currency not found: "
+                                                + normalizedCode
+                                )
+                        );
 
         if (!Boolean.TRUE.equals(currency.getActive())) {
             throw new BusinessRuleException(
-                    "Currency is inactive: " + code
+                    "Currency is inactive: "
+                            + normalizedCode
             );
         }
 
         return currency;
     }
 
+    /*
+     * Find exchange-rate entity by ID
+     */
     private ExchangeRate getEntity(Long id) {
-        return exchangeRateRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Exchange rate not found with id: " + id
-                ));
+        return exchangeRateRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Exchange rate not found with id: "
+                                        + id
+                        )
+                );
     }
 
+    /*
+     * From currency and to currency cannot be the same
+     * while saving exchange-rate records.
+     */
     private void validateCurrencyPair(
             Currency fromCurrency,
             Currency toCurrency
     ) {
-        if (fromCurrency.getId().equals(toCurrency.getId())) {
+        if (fromCurrency.getId()
+                .equals(toCurrency.getId())) {
             throw new BusinessRuleException(
                     "From currency and to currency cannot be same"
             );
         }
     }
 
+    /*
+     * Conversion amount validation
+     */
     private void validateAmount(BigDecimal amount) {
-        if (amount == null
-                || amount.compareTo(BigDecimal.ZERO) < 0) {
+        if (amount == null) {
+            throw new BusinessRuleException(
+                    "Amount is required"
+            );
+        }
+
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new BusinessRuleException(
                     "Amount cannot be negative"
             );
         }
     }
 
+    /*
+     * Use request to-currency when provided.
+     * Otherwise use configured base currency.
+     */
     private String resolveToCurrency(
             ExchangeRateRequestDto request
     ) {
-
         if (request.getToCurrency() != null
                 && !request.getToCurrency().isBlank()) {
             return request.getToCurrency();
         }
 
-        return currencyRepository.findByBaseCurrencyTrue()
+        return currencyRepository
+                .findByBaseCurrencyTrue()
                 .map(Currency::getCode)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Base currency is not configured"
-                ));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Base currency is not configured"
+                        )
+                );
     }
 
+    /*
+     * Normalize exchange-rate precision
+     */
     private BigDecimal normalizeRate(BigDecimal rate) {
+        if (rate == null) {
+            throw new BusinessRuleException(
+                    "Exchange rate is required"
+            );
+        }
+
+        if (rate.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessRuleException(
+                    "Exchange rate must be greater than zero"
+            );
+        }
+
         return rate.setScale(
                 RATE_SCALE,
                 RoundingMode.HALF_UP
         );
     }
 
-    private boolean sameCurrency(
-            String fromCurrency,
-            String toCurrency
-    ) {
-        return normalize(fromCurrency)
-                .equals(normalize(toCurrency));
-    }
-
+    /*
+     * Normalize currency code
+     */
     private String normalize(String currencyCode) {
         if (currencyCode == null
                 || currencyCode.isBlank()) {
@@ -372,9 +506,17 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
             );
         }
 
-        return currencyCode.trim().toUpperCase();
+        return currencyCode
+                .trim()
+                .toUpperCase();
     }
 
+    /*
+     * Same-currency response
+     *
+     * Example:
+     * BDT -> BDT = 1
+     */
     private ExchangeRateResponseDto buildSameCurrencyRate(
             String currencyCode,
             LocalDate date
@@ -384,24 +526,71 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
         return ExchangeRateResponseDto.builder()
                 .fromCurrency(code)
                 .toCurrency(code)
-                .rate(BigDecimal.ONE)
+                .rate(
+                        BigDecimal.ONE.setScale(
+                                RATE_SCALE,
+                                RoundingMode.HALF_UP
+                        )
+                )
                 .effectiveDate(date)
                 .build();
     }
 
+    /*
+     * Create a calculated reverse-rate response.
+     *
+     * Example:
+     * Stored USD -> BDT = 120
+     * Requested BDT -> USD = 1 / 120
+     */
+    private ExchangeRateResponseDto buildReverseRateResponse(
+            String requestedFromCurrency,
+            String requestedToCurrency,
+            ExchangeRate storedReverseRate
+    ) {
+        BigDecimal calculatedRate =
+                BigDecimal.ONE.divide(
+                        storedReverseRate.getRate(),
+                        RATE_SCALE,
+                        RoundingMode.HALF_UP
+                );
+
+        return ExchangeRateResponseDto.builder()
+                .id(null)
+                .fromCurrency(requestedFromCurrency)
+                .toCurrency(requestedToCurrency)
+                .rate(calculatedRate)
+                .effectiveDate(
+                        storedReverseRate.getEffectiveDate()
+                )
+                .source(storedReverseRate.getSource())
+                .createdAt(storedReverseRate.getCreatedAt())
+                .updatedAt(storedReverseRate.getUpdatedAt())
+                .build();
+    }
+
+    /*
+     * Map entity to response DTO
+     */
     private ExchangeRateResponseDto toResponse(
             ExchangeRate exchangeRate
     ) {
         return ExchangeRateResponseDto.builder()
                 .id(exchangeRate.getId())
                 .fromCurrency(
-                        exchangeRate.getFromCurrency().getCode()
+                        exchangeRate
+                                .getFromCurrency()
+                                .getCode()
                 )
                 .toCurrency(
-                        exchangeRate.getToCurrency().getCode()
+                        exchangeRate
+                                .getToCurrency()
+                                .getCode()
                 )
                 .rate(exchangeRate.getRate())
-                .effectiveDate(exchangeRate.getEffectiveDate())
+                .effectiveDate(
+                        exchangeRate.getEffectiveDate()
+                )
                 .source(exchangeRate.getSource())
                 .createdAt(exchangeRate.getCreatedAt())
                 .updatedAt(exchangeRate.getUpdatedAt())
