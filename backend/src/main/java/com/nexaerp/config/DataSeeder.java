@@ -114,6 +114,12 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"CREATE_BANKING", "Create Banking", "BANKING"},
                 new Object[]{"EDIT_BANKING", "Edit Banking", "BANKING"},
 
+                new Object[]{"VIEW_FIXED_ASSET", "View Fixed Asset", "FIXED_ASSET"},
+                new Object[]{"CREATE_FIXED_ASSET", "Create Fixed Asset", "FIXED_ASSET"},
+                new Object[]{"EDIT_FIXED_ASSET", "Edit Fixed Asset", "FIXED_ASSET"},
+                new Object[]{"RUN_DEPRECIATION", "Run Depreciation", "FIXED_ASSET"},
+                new Object[]{"DISPOSE_FIXED_ASSET", "Dispose Fixed Asset", "FIXED_ASSET"},
+
                 new Object[]{"MANAGE_USERS", "Manage Users", "USER_MANAGEMENT"},
                 new Object[]{"MANAGE_ROLES", "Manage Roles", "USER_MANAGEMENT"},
                 new Object[]{"MANAGE_PERMISSIONS", "Manage Permissions", "USER_MANAGEMENT"},

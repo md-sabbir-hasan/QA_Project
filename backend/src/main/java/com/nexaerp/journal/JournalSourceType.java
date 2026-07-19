@@ -9,5 +9,6 @@ public enum JournalSourceType {
     EXPENSE_CLAIM,
     CREDIT_NOTE,
     DEBIT_NOTE,
+    FIXED_ASSET
 
 }

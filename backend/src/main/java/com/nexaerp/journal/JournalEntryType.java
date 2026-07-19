@@ -6,5 +6,7 @@ public enum JournalEntryType {
     PURCHASE,
     CASH,
     BANK,
-    PAYROLL
+    PAYROLL,
+    ASSET,
+
 }

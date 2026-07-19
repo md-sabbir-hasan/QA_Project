@@ -117,6 +117,13 @@ export class MenuService {
             route: APP_ROUTES.BANKING,
             permission: PERMISSIONS.VIEW_BANKING,
           },
+
+          {
+            label: 'Fixed Assets',
+            icon: 'bi-building-gear',
+            route: APP_ROUTES.FIXED_ASSETS,
+            permission: PERMISSIONS.VIEW_FIXED_ASSET
+          },
           {
             label: 'Bank Reconciliation',
             icon: 'bi-clipboard2-check',

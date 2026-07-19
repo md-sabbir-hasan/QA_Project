@@ -228,6 +228,21 @@ export const routes: Routes = [
       },
 
       {
+        path: 'fixed-assets',
+        loadComponent: () =>
+          import('./features/fixed-assets/pages/fixed-asset-list/fixed-asset-list').then(
+            (m) => m.FixedAssetList,
+          ),
+      },
+      {
+        path: 'fixed-assets/:id',
+        loadComponent: () =>
+          import('./features/fixed-assets/pages/fixed-asset-detail/fixed-asset-detail').then(
+            (m) => m.FixedAssetDetail,
+          ),
+      },
+
+      {
         path: 'party',
         loadComponent: () =>
           import('./features/party/pages/party-list/party-list').then((m) => m.PartyList),

@@ -15,6 +15,7 @@ export const APP_ROUTES = {
   PARTY: '/party',
   BANKING: '/banking',
   BANK_RECONCILIATION: '/banking/reconciliation',
+  FIXED_ASSETS: '/fixed-assets',
 
   REPORTS: '/reports',
   LEDGER: '/reports/ledger',

@@ -1,0 +1,238 @@
+<div class="coa-page">
+  <section class="finance-hero">
+    <div>
+      <span class="eyebrow">Finance Console</span>
+      <h1>Fixed Assets</h1>
+      <p>Asset register, depreciation schedule, and disposal accounting.</p>
+    </div>
+
+    <div class="hero-actions">
+      <button class="secondary-btn" type="button" (click)="openRunAllModal()">
+        <i class="bi bi-calculator"></i>
+        Run Depreciation (All)
+      </button>
+      <button class="hero-btn" type="button" (click)="openRegisterModal()">
+        <i class="bi bi-plus-circle"></i>
+        Register Asset
+      </button>
+    </div>
+  </section>
+
+  <section class="metric-grid">
+    <div class="metric-card">
+      <span>Total Assets</span>
+      <strong>{{ assets().length }}</strong>
+      <small>at cost</small>
+    </div>
+    <div class="metric-card">
+      <span>Total Cost</span>
+      <strong>{{ totals.cost | number: '1.2-2' }}</strong>
+    </div>
+    <div class="metric-card debit">
+      <span>Accumulated Depreciation</span>
+      <strong>{{ totals.accumulatedDepreciation | number: '1.2-2' }}</strong>
+    </div>
+    <div class="metric-card credit">
+      <span>Net Book Value</span>
+      <strong>{{ totals.bookValue | number: '1.2-2' }}</strong>
+    </div>
+  </section>
+
+  <section class="accounts-panel">
+    <div class="panel-header">
+      <h2>Asset Register</h2>
+      <span>{{ assets().length }} assets</span>
+    </div>
+
+    @if (loading()) {
+      <div class="state-box">
+        <i class="bi bi-arrow-repeat spin"></i>
+        Loading assets...
+      </div>
+    } @else if (assets().length === 0) {
+      <div class="state-box">No fixed assets registered yet.</div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Method</th>
+              <th class="text-end">Cost</th>
+              <th class="text-end">Accum. Depreciation</th>
+              <th class="text-end">Book Value</th>
+              <th>Status</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of assets(); track a.id) {
+              <tr>
+                <td><strong>{{ a.assetCode }}</strong><span>{{ a.name }}</span></td>
+                <td>{{ a.depreciationMethod === 'STRAIGHT_LINE' ? 'Straight Line' : 'Reducing Balance' }}</td>
+                <td class="text-end">{{ a.purchaseCost | number: '1.2-2' }}</td>
+                <td class="text-end">{{ a.accumulatedDepreciation | number: '1.2-2' }}</td>
+                <td class="text-end"><strong>{{ a.bookValue | number: '1.2-2' }}</strong></td>
+                <td>
+                  <span
+                    class="status"
+                    [class.reconciled]="a.status === 'ACTIVE'"
+                    [class.pending]="a.status === 'FULLY_DEPRECIATED'"
+                    [class.voided]="a.status === 'DISPOSED'"
+                  >
+                    {{ a.status.replace('_', ' ') }}
+                  </span>
+                </td>
+                <td class="text-end">
+                  <button class="icon-action edit" type="button" (click)="openAsset(a)" title="Open">
+                    <i class="bi bi-arrow-up-right-circle"></i>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  @if (showRegisterModal()) {
+    <div class="modal-backdrop" (click)="closeRegisterModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div>
+            <h2>Register Fixed Asset</h2>
+            <p>Link this asset to its GL accounts so depreciation posts automatically.</p>
+          </div>
+          <button class="close-btn" type="button" (click)="closeRegisterModal()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <form [formGroup]="registerForm" (ngSubmit)="submitRegister()">
+          <div class="modal-body">
+            <div class="form-grid">
+              <div class="form-group full">
+                <label>Asset Name</label>
+                <input type="text" formControlName="name" placeholder="e.g. Dell Laptop - Finance Dept" />
+              </div>
+
+              <div class="form-group full">
+                <label>Description</label>
+                <input type="text" formControlName="description" />
+              </div>
+
+              <div class="form-group">
+                <label>Asset Account</label>
+                <select formControlName="assetAccountId">
+                  <option [ngValue]="null">Select account</option>
+                  @for (account of accounts(); track account.id) {
+                    <option [ngValue]="account.id">{{ account.name }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Depreciation Expense Account</label>
+                <select formControlName="depreciationExpenseAccountId">
+                  <option [ngValue]="null">Select account</option>
+                  @for (account of accounts(); track account.id) {
+                    <option [ngValue]="account.id">{{ account.name }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="form-group full">
+                <label>Accumulated Depreciation Account</label>
+                <select formControlName="accumulatedDepreciationAccountId">
+                  <option [ngValue]="null">Select account</option>
+                  @for (account of accounts(); track account.id) {
+                    <option [ngValue]="account.id">{{ account.name }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Purchase Date</label>
+                <input type="date" formControlName="purchaseDate" />
+              </div>
+
+              <div class="form-group">
+                <label>Purchase Cost</label>
+                <input type="number" step="0.01" formControlName="purchaseCost" />
+              </div>
+
+              <div class="form-group">
+                <label>Salvage Value</label>
+                <input type="number" step="0.01" formControlName="salvageValue" />
+              </div>
+
+              <div class="form-group">
+                <label>Useful Life (years)</label>
+                <input type="number" formControlName="usefulLifeYears" />
+              </div>
+
+              <div class="form-group">
+                <label>Depreciation Method</label>
+                <select formControlName="depreciationMethod">
+                  <option value="STRAIGHT_LINE">Straight Line</option>
+                  <option value="REDUCING_BALANCE">Reducing Balance</option>
+                </select>
+              </div>
+
+              @if (isReducingBalance) {
+                <div class="form-group">
+                  <label>Annual Rate (%)</label>
+                  <input type="number" step="0.01" formControlName="reducingBalanceRate" placeholder="e.g. 20" />
+                </div>
+              }
+            </div>
+
+            <div class="modal-actions">
+              <button class="secondary-btn" type="button" style="color:#334155;border-color:#cbd5e1;" (click)="closeRegisterModal()">
+                Cancel
+              </button>
+              <button class="hero-btn" type="submit" [disabled]="submitting()">
+                {{ submitting() ? 'Saving...' : 'Register' }}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (showRunAllModal()) {
+    <div class="modal-backdrop" (click)="closeRunAllModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div>
+            <h2>Run Depreciation — All Assets</h2>
+            <p>Posts a catch-up depreciation journal for every active asset, up to this date.</p>
+          </div>
+          <button class="close-btn" type="button" (click)="closeRunAllModal()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>As-of Date</label>
+              <input type="date" [ngModel]="runAllDate()" (ngModelChange)="runAllDate.set($event)" />
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button class="secondary-btn" type="button" style="color:#334155;border-color:#cbd5e1;" (click)="closeRunAllModal()">
+              Cancel
+            </button>
+            <button class="hero-btn" type="button" [disabled]="submitting()" (click)="submitRunAll()">
+              {{ submitting() ? 'Running...' : 'Run Depreciation' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
