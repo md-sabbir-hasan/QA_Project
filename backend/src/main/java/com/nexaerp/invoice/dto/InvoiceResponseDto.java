@@ -46,11 +46,5 @@ public class InvoiceResponseDto {
 
     private BigDecimal exchangeRate;
 
-    private BigDecimal baseGrandTotal;
-
-    private BigDecimal basePaidAmount;
-
-    private BigDecimal baseDueAmount;
-
     private List<InvoiceItemResponseDto> items;
 }

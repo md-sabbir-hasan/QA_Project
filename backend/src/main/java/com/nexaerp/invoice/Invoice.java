@@ -48,18 +48,6 @@ public class Invoice extends BaseEntity {
     @Builder.Default
     private BigDecimal exchangeRate = BigDecimal.ONE;
 
-    @Column(nullable = false, precision = 19, scale = 2)
-    @Builder.Default
-    private BigDecimal baseGrandTotal = BigDecimal.ZERO;
-
-    @Column(nullable = false, precision = 19, scale = 2)
-    @Builder.Default
-    private BigDecimal basePaidAmount = BigDecimal.ZERO;
-
-    @Column(nullable = false, precision = 19, scale = 2)
-    @Builder.Default
-    private BigDecimal baseDueAmount = BigDecimal.ZERO;
-
     @Builder.Default
     private Integer paymentTerms = 30;
 
@@ -112,80 +100,6 @@ public class Invoice extends BaseEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
-    private List<InvoiceItem> items;
-
-    @PrePersist
-    public void prePersistInvoice() {
-        normalizeCurrencyFields();
-    }
-
-    @PreUpdate
-    public void preUpdateInvoice() {
-        normalizeCurrencyFields();
-    }
-
-    private void normalizeCurrencyFields() {
-
-        if (currencyCode == null || currencyCode.isBlank()) {
-            currencyCode = "BDT";
-        } else {
-            currencyCode = currencyCode.trim().toUpperCase();
-        }
-
-        if (exchangeRate == null) {
-            exchangeRate = BigDecimal.ONE;
-        }
-
-        if (baseGrandTotal == null) {
-            baseGrandTotal = BigDecimal.ZERO;
-        }
-
-        if (basePaidAmount == null) {
-            basePaidAmount = BigDecimal.ZERO;
-        }
-
-        if (baseDueAmount == null) {
-            baseDueAmount = BigDecimal.ZERO;
-        }
-
-        if (subTotal == null) {
-            subTotal = BigDecimal.ZERO;
-        }
-
-        if (discountAmount == null) {
-            discountAmount = BigDecimal.ZERO;
-        }
-
-        if (vatAmount == null) {
-            vatAmount = BigDecimal.ZERO;
-        }
-
-        if (grandTotal == null) {
-            grandTotal = BigDecimal.ZERO;
-        }
-
-        if (paidAmount == null) {
-            paidAmount = BigDecimal.ZERO;
-        }
-
-        if (dueAmount == null) {
-            dueAmount = BigDecimal.ZERO;
-        }
-
-        if (status == null) {
-            status = InvoiceStatus.DRAFT;
-        }
-
-        if (paymentTerms == null) {
-            paymentTerms = 30;
-        }
-
-        if (pdfGenerated == null) {
-            pdfGenerated = false;
-        }
-
-        if (printCount == null) {
-            printCount = 0;
-        }
-    }
+    @Builder.Default
+    private List<InvoiceItem> items = new java.util.ArrayList<>();
 }
