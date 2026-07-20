@@ -12,6 +12,7 @@ import com.nexaerp.banking.repository.BankAccountRepository;
 import com.nexaerp.banking.repository.BankTransactionRepository;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
+import com.nexaerp.expense.ExpenseRepository;
 import com.nexaerp.invoice.Invoice;
 import com.nexaerp.invoice.InvoiceRepository;
 import com.nexaerp.invoice.InvoiceStatus;
@@ -57,6 +58,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final CurrentUserService currentUserService;
     private final BankAccountRepository bankAccountRepository;
     private final BankTransactionRepository bankTransactionRepository;
+    private final ExpenseRepository expenseRepository;
 
 
     @Override
@@ -547,7 +549,30 @@ public class PaymentServiceImpl implements PaymentService {
                 if (dto.getAllocatedAmount().compareTo(bill.getDueAmount()) > 0) {
                     throw new BusinessRuleException("Allocation amount cannot exceed the remaining due amount of the vendor bill");
                 }
-            } else {
+            }
+
+            else if (dto.getReferenceType() == PaymentReferenceType.EXPENSE) {
+                if (payment.getPaymentType() != PaymentType.PAYMENT) {
+                    throw new BusinessRuleException("Expense allocation is only allowed for PAYMENT payments");
+                }
+                com.nexaerp.expense.Expense exp = expenseRepository.findById(dto.getReferenceId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
+                if (exp.getParty() == null || !exp.getParty().getId().equals(payment.getParty().getId())) {
+                    throw new BusinessRuleException("Allocated expense does not belong to the selected party");
+                }
+                if (exp.getStatus() == com.nexaerp.expense.ExpenseStatus.CANCELLED) {
+                    throw new BusinessRuleException("Cannot allocate payment to a cancelled expense");
+                }
+                if (exp.getDueAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new BusinessRuleException("Expense due amount must be greater than zero");
+                }
+                if (dto.getAllocatedAmount().compareTo(exp.getDueAmount()) > 0) {
+                    throw new BusinessRuleException("Allocation amount cannot exceed the remaining due amount of the expense");
+                }
+                }
+
+
+            else {
                 throw new BusinessRuleException("Invalid allocation reference type");
             }
         }
@@ -581,7 +606,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             invoiceRepository.save(invoice);
 
-        } else {
+        } else if (allocation.getReferenceType() == PaymentReferenceType.VENDOR_BILL) {
 
             VendorBill bill = vendorBillRepository.findById(allocation.getReferenceId())
                     .orElseThrow(() -> new ResourceNotFoundException("Vendor bill not found"));
@@ -594,6 +619,20 @@ public class PaymentServiceImpl implements PaymentService {
                     : VendorBillStatus.PARTIAL);
 
             vendorBillRepository.save(bill);
+
+        } else {
+
+            com.nexaerp.expense.Expense exp = expenseRepository.findById(allocation.getReferenceId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
+
+            exp.setPaidAmount(exp.getPaidAmount().add(allocation.getAllocatedAmount()));
+            exp.setDueAmount(exp.getAmount().subtract(exp.getPaidAmount()));
+
+            exp.setPaymentStatus(exp.getDueAmount().compareTo(BigDecimal.ZERO) <= 0
+                    ? com.nexaerp.expense.ExpensePaymentStatus.PAID
+                    : com.nexaerp.expense.ExpensePaymentStatus.PARTIAL);
+
+            expenseRepository.save(exp);
         }
     }
 
@@ -616,7 +655,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             invoiceRepository.save(invoice);
 
-        } else {
+        } else if (allocation.getReferenceType() == PaymentReferenceType.VENDOR_BILL) {
 
             VendorBill bill = vendorBillRepository.findById(allocation.getReferenceId())
                     .orElseThrow(() -> new ResourceNotFoundException("Vendor bill not found"));
@@ -629,6 +668,20 @@ public class PaymentServiceImpl implements PaymentService {
                     : VendorBillStatus.PARTIAL);
 
             vendorBillRepository.save(bill);
+
+        } else {
+
+            com.nexaerp.expense.Expense exp = expenseRepository.findById(allocation.getReferenceId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
+
+            exp.setPaidAmount(exp.getPaidAmount().subtract(allocation.getAllocatedAmount()));
+            exp.setDueAmount(exp.getAmount().subtract(exp.getPaidAmount()));
+
+            exp.setPaymentStatus(exp.getPaidAmount().compareTo(BigDecimal.ZERO) <= 0
+                    ? com.nexaerp.expense.ExpensePaymentStatus.UNPAID
+                    : com.nexaerp.expense.ExpensePaymentStatus.PARTIAL);
+
+            expenseRepository.save(exp);
         }
     }
 

@@ -98,6 +98,13 @@ export class MenuService {
           },
 
           {
+            label: 'Expenses',
+            icon: 'bi-wallet2',
+            route: APP_ROUTES.EXPENSE,
+            permission: PERMISSIONS.VIEW_EXPENSE,
+          },
+
+          {
             label: 'Payments',
             icon: 'bi-credit-card',
             route: APP_ROUTES.PAYMENT,

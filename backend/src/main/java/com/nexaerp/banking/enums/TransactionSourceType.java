@@ -5,5 +5,6 @@ public enum TransactionSourceType {
     PAYMENT,
     JOURNAL,
     TRANSFER,
-    FIXED_ASSET
+    FIXED_ASSET,
+    EXPENSE
 }

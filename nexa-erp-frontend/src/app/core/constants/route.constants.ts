@@ -11,6 +11,7 @@ export const APP_ROUTES = {
   JOURNAL: '/journals',
   INVOICE: '/invoice',
   VENDOR_BILL: '/vendor-bill',
+  EXPENSE: '/expense',
   PAYMENT: '/payment',
   PARTY: '/party',
   BANKING: '/banking',

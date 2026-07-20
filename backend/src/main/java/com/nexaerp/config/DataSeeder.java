@@ -101,6 +101,11 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"POST_VENDOR_BILL", "Post Vendor Bill", "VENDOR_BILL"},
                 new Object[]{"CANCEL_VENDOR_BILL", "Cancel Vendor Bill", "VENDOR_BILL"},
 
+                // expense
+                new Object[]{"VIEW_EXPENSE", "View Expense", "EXPENSE"},
+                new Object[]{"CREATE_EXPENSE", "Create Expense", "EXPENSE"},
+                new Object[]{"CANCEL_EXPENSE", "Cancel Expense", "EXPENSE"},
+
                 new Object[]{"VIEW_PAYMENT", "View Payment", "PAYMENT"},
                 new Object[]{"CREATE_PAYMENT", "Create Payment", "PAYMENT"},
                 new Object[]{"POST_PAYMENT", "Post Payment", "PAYMENT"},

@@ -163,6 +163,22 @@ export const routes: Routes = [
           ),
       },
 
+      {
+        path: 'expense',
+        loadComponent: () =>
+          import('./features/expense/pages/expense-list/expense-list').then((m) => m.ExpenseList),
+      },
+      {
+        path: 'expense/new',
+        loadComponent: () =>
+          import('./features/expense/pages/expense-form/expense-form').then((m) => m.ExpenseForm),
+      },
+      {
+        path: 'expense/:id',
+        loadComponent: () =>
+          import('./features/expense/pages/expense-detail/expense-detail').then((m) => m.ExpenseDetail),
+      },
+
       // Payment
       {
         path: 'payment',
