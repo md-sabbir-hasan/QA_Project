@@ -5,6 +5,9 @@ import com.nexaerp.account.AccountRepository;
 import com.nexaerp.accountingperiod.AccountingPeriodService;
 import com.nexaerp.audit.AuditAction;
 import com.nexaerp.audit.AuditLogService;
+import com.nexaerp.banking.enums.TransactionSourceType;
+import com.nexaerp.banking.enums.TransactionType;
+import com.nexaerp.banking.services.BankTransactionService;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.journal.dto.JournalEntryRequestDto;
@@ -31,6 +34,7 @@ public class JournalEntryServiceImpl implements JournalEntryService{
     private final AuditLogService auditLogService;
     private final AccountingPeriodService accountingPeriodService;
     private final MakerCheckerService makerCheckerService;
+    private final BankTransactionService bankTransactionService;
 
 
     @Override
@@ -326,7 +330,6 @@ public class JournalEntryServiceImpl implements JournalEntryService{
         switch (account.getType()) {
             case ASSET:
             case EXPENSE:
-                // Debit Increase, Credit Decrease
                 account.setCurrentBalance(
                         account.getCurrentBalance()
                                 .add(line.getDebit())
@@ -336,7 +339,6 @@ public class JournalEntryServiceImpl implements JournalEntryService{
             case LIABILITY:
             case EQUITY:
             case REVENUE:
-                // Credit Increase, Debit Decrease
                 account.setCurrentBalance(
                         account.getCurrentBalance()
                                 .add(line.getCredit())
@@ -346,6 +348,22 @@ public class JournalEntryServiceImpl implements JournalEntryService{
         }
 
         accountRepository.save(account);
+
+        // If this COA account is linked to a bank account, mirror it into the Banking
+        // module too, so Banking/Bank Reconciliation pages stay in sync with the COA
+        // even for manually-entered journal entries.
+        JournalEntry entry = line.getJournalEntry();
+        if (line.getDebit().compareTo(BigDecimal.ZERO) > 0) {
+            bankTransactionService.mirrorFromJournal(
+                    account.getId(), entry.getDate(), TransactionType.CREDIT, line.getDebit(),
+                    entry.getDescription(), entry.getEntryNumber(), null,
+                    TransactionSourceType.JOURNAL, entry.getId());
+        } else if (line.getCredit().compareTo(BigDecimal.ZERO) > 0) {
+            bankTransactionService.mirrorFromJournal(
+                    account.getId(), entry.getDate(), TransactionType.DEBIT, line.getCredit(),
+                    entry.getDescription(), entry.getEntryNumber(), null,
+                    TransactionSourceType.JOURNAL, entry.getId());
+        }
     }
 
     private String generateEntryNumber() {

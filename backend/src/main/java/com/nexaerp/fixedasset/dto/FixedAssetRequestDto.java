@@ -33,6 +33,11 @@ public class FixedAssetRequestDto {
     @NotNull(message = "Accumulated depreciation account is required")
     private Long accumulatedDepreciationAccountId;
 
+    // The account the purchase money came from/goes to — Cash, Bank, or
+    // Accounts Payable if bought on credit. Used to post the initial purchase entry.
+    @NotNull(message = "Payment source account is required")
+    private Long paymentSourceAccountId;
+
     @NotNull(message = "Purchase date is required")
     private LocalDate purchaseDate;
 

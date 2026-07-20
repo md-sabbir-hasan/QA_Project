@@ -4,6 +4,7 @@ import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
 import com.nexaerp.account.AccountType;
 import com.nexaerp.accountingperiod.AccountingPeriodService;
+import com.nexaerp.banking.services.BankTransactionService;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.fixedasset.*;
@@ -35,6 +36,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
     private final JournalEntryRepository journalEntryRepository;
     private final JournalLineRepository journalLineRepository;
     private final AccountingPeriodService accountingPeriodService;
+    private final BankTransactionService bankTransactionService;
 
     @Override
     @Transactional
@@ -42,6 +44,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         Account assetAccount = getAccount(request.getAssetAccountId());
         Account depreciationExpenseAccount = getAccount(request.getDepreciationExpenseAccountId());
         Account accumulatedDepreciationAccount = getAccount(request.getAccumulatedDepreciationAccountId());
+        Account paymentSourceAccount = getAccount(request.getPaymentSourceAccountId());
 
         if (assetAccount.getType() != AccountType.ASSET) {
             throw new BusinessRuleException("Asset account must be of type ASSET");
@@ -52,6 +55,9 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         if (depreciationExpenseAccount.getType() != AccountType.EXPENSE) {
             throw new BusinessRuleException("Depreciation expense account must be of type EXPENSE");
         }
+        if (paymentSourceAccount.getId().equals(assetAccount.getId())) {
+            throw new BusinessRuleException("Payment source account cannot be the same as the asset account");
+        }
         if (request.getSalvageValue().compareTo(request.getPurchaseCost()) >= 0) {
             throw new BusinessRuleException("Salvage value must be less than purchase cost");
         }
@@ -60,6 +66,8 @@ public class FixedAssetServiceImpl implements FixedAssetService {
                 || request.getReducingBalanceRate().compareTo(BigDecimal.ZERO) <= 0)) {
             throw new BusinessRuleException("Reducing balance rate is required and must be greater than 0");
         }
+
+        accountingPeriodService.validatePostingDate(request.getPurchaseDate());
 
         FixedAsset asset = FixedAsset.builder()
                 .assetCode(generateAssetCode())
@@ -78,7 +86,28 @@ public class FixedAssetServiceImpl implements FixedAssetService {
                 .status(AssetStatus.ACTIVE)
                 .build();
 
-        return toResponse(fixedAssetRepository.save(asset));
+        FixedAsset saved = fixedAssetRepository.save(asset);
+
+        // Purchase entry: Dr Asset, Cr payment source (Cash/Bank/Accounts Payable).
+        // addLine() below automatically mirrors into the Banking module if the payment
+        // source COA account happens to be linked to a BankAccount — see mirrorFromJournal().
+        JournalEntry entry = new JournalEntry();
+        entry.setEntryNumber(generateJournalNumber());
+        entry.setDate(request.getPurchaseDate());
+        entry.setDescription("Asset purchase - " + saved.getAssetCode() + " - " + saved.getName());
+        entry.setType(JournalEntryType.ASSET);
+        entry.setStatus(JournalStatus.POSTED);
+        entry.setSourceType(JournalSourceType.FIXED_ASSET);
+        entry.setSourceId(saved.getId());
+        entry.setTotalAmount(request.getPurchaseCost());
+        JournalEntry savedEntry = journalEntryRepository.save(entry);
+
+        addLine(savedEntry, assetAccount, request.getPurchaseCost(), BigDecimal.ZERO,
+                "Asset purchase - " + saved.getAssetCode());
+        addLine(savedEntry, paymentSourceAccount, BigDecimal.ZERO, request.getPurchaseCost(),
+                "Asset purchase - " + saved.getAssetCode());
+
+        return toResponse(saved);
     }
 
     @Override
@@ -311,6 +340,20 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         line.setDescription(description);
         journalLineRepository.save(line);
         updateBalance(account, debit, credit);
+
+        // If this COA account is linked to a bank account, mirror it into the Banking
+        // module too, so Banking/Bank Reconciliation pages stay in sync with the COA.
+        if (debit.compareTo(BigDecimal.ZERO) > 0) {
+            bankTransactionService.mirrorFromJournal(
+                    account.getId(), entry.getDate(), com.nexaerp.banking.enums.TransactionType.CREDIT, debit,
+                    description, entry.getEntryNumber(), null,
+                    com.nexaerp.banking.enums.TransactionSourceType.FIXED_ASSET, entry.getSourceId());
+        } else if (credit.compareTo(BigDecimal.ZERO) > 0) {
+            bankTransactionService.mirrorFromJournal(
+                    account.getId(), entry.getDate(), com.nexaerp.banking.enums.TransactionType.DEBIT, credit,
+                    description, entry.getEntryNumber(), null,
+                    com.nexaerp.banking.enums.TransactionSourceType.FIXED_ASSET, entry.getSourceId());
+        }
     }
 
     private void updateBalance(Account account, BigDecimal debit, BigDecimal credit) {

@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -282,6 +283,56 @@ public class BankTransactionServiceImpl implements BankTransactionService {
                 .creditTransaction(toResponse(creditLeg))
                 .build();
     }
+
+    @Override
+    @Transactional
+    public Optional<BankTransactionResponseDto> mirrorFromJournal(
+            Long coaAccountId,
+            LocalDate date,
+            TransactionType type,
+            BigDecimal amount,
+            String description,
+            String referenceNumber,
+            Long contraAccountId,
+            TransactionSourceType sourceType,
+            Long sourceId
+    ) {
+        Optional<BankAccount> linked = bankAccountRepository.findByCoaAccountId(coaAccountId);
+        if (linked.isEmpty()) {
+            return Optional.empty(); // not a bank-linked account, nothing to mirror
+        }
+        BankAccount bankAccount = linked.get();
+
+        BankTransaction transaction = BankTransaction.builder()
+                .transactionNumber(generateTransactionNumber())
+                .bankAccount(bankAccount)
+                .transactionDate(date)
+                .transactionType(type)
+                .amount(amount)
+                .description(description)
+                .referenceNumber(referenceNumber)
+                .contraAccountId(contraAccountId)
+                .reconciled(false)
+                .voided(false)
+                .sourceType(sourceType)
+                .sourceId(sourceId)
+                .build();
+
+        BankTransaction saved = bankTransactionRepository.save(transaction);
+
+        if (type == TransactionType.CREDIT) {
+            bankAccount.setCurrentBalance(bankAccount.getCurrentBalance().add(amount));
+        } else {
+            bankAccount.setCurrentBalance(bankAccount.getCurrentBalance().subtract(amount));
+        }
+        bankAccountRepository.save(bankAccount);
+
+        // Deliberately no createJournalEntry() call here — the caller already posted the
+        // COA-side journal entry; this only mirrors it into the Banking module.
+
+        return Optional.of(toResponse(saved));
+    }
+
 
 
     // _______Private helper__________
