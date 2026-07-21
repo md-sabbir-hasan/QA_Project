@@ -4,6 +4,8 @@ import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
 import com.nexaerp.account.AccountType;
 import com.nexaerp.accountingperiod.AccountingPeriodService;
+import com.nexaerp.audit.AuditAction;
+import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.banking.services.BankTransactionService;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
@@ -37,6 +39,7 @@ public class FixedAssetServiceImpl implements FixedAssetService {
     private final JournalLineRepository journalLineRepository;
     private final AccountingPeriodService accountingPeriodService;
     private final BankTransactionService bankTransactionService;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -106,6 +109,14 @@ public class FixedAssetServiceImpl implements FixedAssetService {
                 "Asset purchase - " + saved.getAssetCode());
         addLine(savedEntry, paymentSourceAccount, BigDecimal.ZERO, request.getPurchaseCost(),
                 "Asset purchase - " + saved.getAssetCode());
+
+        auditLogService.log(
+                AuditAction.CREATED,
+                "FIXED_ASSET",
+                saved.getId(),
+                null,
+                saved.getAssetCode() + " - " + saved.getName()
+        );
 
         return toResponse(saved);
     }
@@ -227,6 +238,14 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         asset.setDisposalDate(request.getDisposalDate());
         asset.setDisposalProceeds(proceeds);
         asset.setDisposalGainLoss(gainLoss);
+
+        auditLogService.log(
+                AuditAction.DEACTIVATED,
+                "FIXED_ASSET",
+                asset.getId(),
+                AssetStatus.ACTIVE.name(),
+                AssetStatus.DISPOSED.name()
+        );
 
         return toResponse(fixedAssetRepository.save(asset));
     }

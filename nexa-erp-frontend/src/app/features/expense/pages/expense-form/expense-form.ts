@@ -63,6 +63,25 @@ export class ExpenseForm implements OnInit {
     return value === true || value === 'true';
   }
 
+  get previewExpenseAccountName(): string {
+    const id = Number(this.form.get('expenseAccountId')?.value);
+    const acc = this.expenseAccounts().find((a) => a.id === id);
+    return acc ? acc.name : 'Select category';
+  }
+
+  get previewCreditAccountName(): string {
+    if (this.paidImmediately) {
+      const id = Number(this.form.get('paymentAccountId')?.value);
+      const acc = this.paymentAccounts().find((a) => a.id === id);
+      return acc ? acc.name : 'Select account';
+    }
+    return 'Accounts Payable (default)';
+  }
+
+  get previewAmount(): number {
+    return Number(this.form.get('amount')?.value ?? 0);
+  }
+
   private setDefaultDate(): void {
     const today = new Date().toISOString().substring(0, 10);
     this.form.patchValue({ expenseDate: today });

@@ -4,6 +4,8 @@ import com.nexaerp.account.Account;
 import com.nexaerp.account.AccountRepository;
 import com.nexaerp.account.AccountType;
 import com.nexaerp.accountingperiod.AccountingPeriodService;
+import com.nexaerp.audit.AuditAction;
+import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.banking.enums.TransactionSourceType;
 import com.nexaerp.banking.enums.TransactionType;
 import com.nexaerp.banking.services.BankTransactionService;
@@ -43,6 +45,7 @@ public class ExpenseServiceImpl implements ExpenseService {
     private final SystemSettingsService systemSettingsService;
     private final BankTransactionService bankTransactionService;
     private final PaymentAllocationRepository paymentAllocationRepository;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -116,6 +119,14 @@ public class ExpenseServiceImpl implements ExpenseService {
         addLine(savedEntry, creditAccount, BigDecimal.ZERO, request.getAmount(),
                 "Expense - " + saved.getExpenseNumber());
 
+        auditLogService.log(
+                AuditAction.CREATED,
+                "EXPENSE",
+                saved.getId(),
+                null,
+                saved.getExpenseNumber() + " - " + saved.getAmount()
+        );
+
         return toResponse(saved);
     }
 
@@ -179,6 +190,14 @@ public class ExpenseServiceImpl implements ExpenseService {
         expense.setPaidAmount(BigDecimal.ZERO);
         expense.setDueAmount(BigDecimal.ZERO);
         expense.setPaymentStatus(ExpensePaymentStatus.UNPAID);
+
+        auditLogService.log(
+                AuditAction.CANCELLED,
+                "EXPENSE",
+                expense.getId(),
+                ExpenseStatus.POSTED.name(),
+                ExpenseStatus.CANCELLED.name()
+        );
 
         return toResponse(expenseRepository.save(expense));
     }
