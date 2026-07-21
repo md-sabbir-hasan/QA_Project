@@ -106,6 +106,15 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"CREATE_EXPENSE", "Create Expense", "EXPENSE"},
                 new Object[]{"CANCEL_EXPENSE", "Cancel Expense", "EXPENSE"},
 
+                // budget
+                new Object[]{"VIEW_BUDGET", "View Budget", "BUDGET"},
+                new Object[]{"CREATE_BUDGET", "Create Budget", "BUDGET"},
+                new Object[]{"EDIT_BUDGET", "Edit Budget", "BUDGET"},
+                new Object[]{"DELETE_BUDGET", "Delete Budget", "BUDGET"},
+                new Object[]{"ACTIVATE_BUDGET", "Activate Budget", "BUDGET"},
+                new Object[]{"CLOSE_BUDGET", "Close Budget", "BUDGET"},
+                new Object[]{"VIEW_BUDGET_REPORT", "View Budget Variance Report", "BUDGET"},
+
                 new Object[]{"VIEW_PAYMENT", "View Payment", "PAYMENT"},
                 new Object[]{"CREATE_PAYMENT", "Create Payment", "PAYMENT"},
                 new Object[]{"POST_PAYMENT", "Post Payment", "PAYMENT"},

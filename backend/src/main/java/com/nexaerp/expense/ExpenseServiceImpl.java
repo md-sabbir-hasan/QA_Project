@@ -9,6 +9,8 @@ import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.banking.enums.TransactionSourceType;
 import com.nexaerp.banking.enums.TransactionType;
 import com.nexaerp.banking.services.BankTransactionService;
+import com.nexaerp.budget.BudgetCheckService;
+import com.nexaerp.budget.dto.BudgetWarningDto;
 import com.nexaerp.common.exception.BusinessRuleException;
 import com.nexaerp.common.exception.ResourceNotFoundException;
 import com.nexaerp.expense.dto.ExpenseCancelRequestDto;
@@ -29,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -46,6 +49,7 @@ public class ExpenseServiceImpl implements ExpenseService {
     private final BankTransactionService bankTransactionService;
     private final PaymentAllocationRepository paymentAllocationRepository;
     private final AuditLogService auditLogService;
+    private final BudgetCheckService budgetCheckService;
 
     @Override
     @Transactional
@@ -127,7 +131,12 @@ public class ExpenseServiceImpl implements ExpenseService {
                 saved.getExpenseNumber() + " - " + saved.getAmount()
         );
 
-        return toResponse(saved);
+        List<BudgetWarningDto> budgetWarnings = budgetCheckService
+                .checkExpenseAccount(expenseAccount, request.getExpenseDate(), request.getAmount())
+                .map(List::of)
+                .orElse(Collections.emptyList());
+
+        return toResponse(saved, budgetWarnings);
     }
 
     @Override
@@ -309,6 +318,34 @@ public class ExpenseServiceImpl implements ExpenseService {
                 .cancelledAt(e.getCancelledAt())
                 .cancelReason(e.getCancelReason())
                 .createdAt(e.getCreatedAt())
+                .build();
+    }
+
+    // overload
+    private ExpenseResponseDto toResponse(Expense e, List<BudgetWarningDto> budgetWarnings) {
+        return ExpenseResponseDto.builder()
+                .id(e.getId())
+                .expenseNumber(e.getExpenseNumber())
+                .expenseDate(e.getExpenseDate())
+                .expenseAccountId(e.getExpenseAccount().getId())
+                .expenseAccountName(e.getExpenseAccount().getName())
+                .paidImmediately(e.getPaidImmediately())
+                .paymentAccountId(e.getPaymentAccount() != null ? e.getPaymentAccount().getId() : null)
+                .paymentAccountName(e.getPaymentAccount() != null ? e.getPaymentAccount().getName() : null)
+                .partyId(e.getParty() != null ? e.getParty().getId() : null)
+                .partyName(e.getParty() != null ? e.getParty().getName() : null)
+                .amount(e.getAmount())
+                .paidAmount(e.getPaidAmount())
+                .dueAmount(e.getDueAmount())
+                .paymentStatus(e.getPaymentStatus())
+                .referenceNumber(e.getReferenceNumber())
+                .attachmentUrl(e.getAttachmentUrl())
+                .notes(e.getNotes())
+                .status(e.getStatus())
+                .cancelledAt(e.getCancelledAt())
+                .cancelReason(e.getCancelReason())
+                .createdAt(e.getCreatedAt())
+                .budgetWarnings(budgetWarnings)
                 .build();
     }
 }

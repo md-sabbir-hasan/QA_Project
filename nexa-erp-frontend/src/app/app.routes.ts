@@ -179,6 +179,28 @@ export const routes: Routes = [
           import('./features/expense/pages/expense-detail/expense-detail').then((m) => m.ExpenseDetail),
       },
 
+      // Budget
+      {
+        path: 'budget',
+        loadComponent: () =>
+          import('./features/budget/pages/budget-list/budget-list').then((m) => m.BudgetList),
+      },
+      {
+        path: 'budget/new',
+        loadComponent: () =>
+          import('./features/budget/pages/budget-form/budget-form').then((m) => m.BudgetForm),
+      },
+      {
+        path: 'budget/:id',
+        loadComponent: () =>
+          import('./features/budget/pages/budget-detail/budget-detail').then((m) => m.BudgetDetail),
+      },
+      {
+        path: 'budget/:id/variance',
+        loadComponent: () =>
+          import('./features/budget/pages/budget-variance/budget-variance').then((m) => m.BudgetVariance),
+      },
+
       // Payment
       {
         path: 'payment',

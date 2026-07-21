@@ -43,6 +43,7 @@ export interface ExpenseResponse {
   cancelReason: string | null;
 
   createdAt: string;
+  budgetWarnings: { message: string }[] | null;
 }
 
 export interface ExpenseCancelRequest {

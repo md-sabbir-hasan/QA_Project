@@ -1,5 +1,6 @@
 package com.nexaerp.expense.dto;
 
+import com.nexaerp.budget.dto.BudgetWarningDto;
 import com.nexaerp.expense.ExpensePaymentStatus;
 import com.nexaerp.expense.ExpenseStatus;
 import lombok.AllArgsConstructor;
@@ -11,6 +12,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -47,4 +49,7 @@ public class ExpenseResponseDto {
     private String cancelReason;
 
     private LocalDateTime createdAt;
+
+    //budget
+    private List<BudgetWarningDto> budgetWarnings;
 }

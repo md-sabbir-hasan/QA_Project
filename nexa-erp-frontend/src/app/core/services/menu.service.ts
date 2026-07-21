@@ -137,6 +137,13 @@ export class MenuService {
             route: APP_ROUTES.BANK_RECONCILIATION,
             permission: PERMISSIONS.VIEW_BANKING
           },
+
+          {
+            label: 'Budgets',
+            icon: 'bi-pie-chart-fill',
+            route: APP_ROUTES.BUDGET,
+            permission: PERMISSIONS.VIEW_BUDGET,
+          },
           {
             label: 'Credit Notes',
             icon: 'bi-receipt-cutoff',

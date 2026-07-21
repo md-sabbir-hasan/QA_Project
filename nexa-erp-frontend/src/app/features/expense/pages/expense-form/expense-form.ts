@@ -134,50 +134,56 @@ export class ExpenseForm implements OnInit {
   }
 
   submit(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      this.alert.error('Please complete required fields');
-      return;
-    }
-
-    const raw = this.form.getRawValue();
-    const paidNow = raw.paidImmediately === true || raw.paidImmediately === 'true';
-
-    const request: ExpenseRequest = {
-      expenseDate: raw.expenseDate,
-      expenseAccountId: Number(raw.expenseAccountId),
-      paidImmediately: paidNow,
-      paymentAccountId: paidNow ? Number(raw.paymentAccountId) : null,
-      partyId: raw.partyId ? Number(raw.partyId) : null,
-      amount: Number(raw.amount),
-      referenceNumber: raw.referenceNumber?.trim() || undefined,
-      notes: raw.notes?.trim() || undefined,
-    };
-
-    this.submitting.set(true);
-
-    this.expenseService
-      .create(request)
-      .pipe(finalize(() => this.submitting.set(false)))
-      .subscribe({
-        next: (response) => {
-          const expense = response.data;
-
-          if (this.selectedFile) {
-            this.expenseService.uploadReceipt(this.selectedFile, expense.id).subscribe({
-              next: (uploadRes) => {
-                this.expenseService.attachReceipt(expense.id, uploadRes.data.fileUrl).subscribe();
-              },
-              error: () => this.alert.warning('Expense saved, but receipt upload failed'),
-            });
-          }
-
-          this.alert.success('Expense recorded');
-          this.router.navigate(['/expense', expense.id]);
-        },
-        error: (error) => {
-          this.alert.error(error?.error?.message ?? 'Failed to save expense');
-        },
-      });
+  if (this.form.invalid) {
+    this.form.markAllAsTouched();
+    this.alert.error('Please complete required fields');
+    return;
   }
+
+  const raw = this.form.getRawValue();
+  const paidNow = raw.paidImmediately === true || raw.paidImmediately === 'true';
+
+  const request: ExpenseRequest = {
+    expenseDate: raw.expenseDate,
+    expenseAccountId: Number(raw.expenseAccountId),
+    paidImmediately: paidNow,
+    paymentAccountId: paidNow ? Number(raw.paymentAccountId) : null,
+    partyId: raw.partyId ? Number(raw.partyId) : null,
+    amount: Number(raw.amount),
+    referenceNumber: raw.referenceNumber?.trim() || undefined,
+    notes: raw.notes?.trim() || undefined,
+  };
+
+  this.submitting.set(true);
+
+  this.expenseService
+    .create(request)
+    .pipe(finalize(() => this.submitting.set(false)))
+    .subscribe({
+      next: (response) => {
+        const expense = response.data;
+
+        if (this.selectedFile) {
+          this.expenseService.uploadReceipt(this.selectedFile, expense.id).subscribe({
+            next: (uploadRes) => {
+              this.expenseService.attachReceipt(expense.id, uploadRes.data.fileUrl).subscribe();
+            },
+            error: () => this.alert.warning('Expense saved, but receipt upload failed'),
+          });
+        }
+
+        if (expense.budgetWarnings && expense.budgetWarnings.length > 0) {
+          for (const w of expense.budgetWarnings) {
+            this.alert.warning(w.message);
+          }
+        }
+
+        this.alert.success('Expense recorded');
+        this.router.navigate(['/expense', expense.id]);
+      },
+      error: (error) => {
+        this.alert.error(error?.error?.message ?? 'Failed to save expense');
+      },
+    });
+}
 }
