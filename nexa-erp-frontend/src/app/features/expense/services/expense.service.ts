@@ -37,6 +37,10 @@ export class ExpenseService {
     return this.http.post<ApiResponse<ExpenseResponse>>(this.baseUrl, request);
   }
 
+  post(id: number): Observable<ApiResponse<ExpenseResponse>> {
+    return this.http.post<ApiResponse<ExpenseResponse>>(`${this.baseUrl}/${id}/post`, {});
+  }
+
   cancel(id: number, request: ExpenseCancelRequest): Observable<ApiResponse<ExpenseResponse>> {
     return this.http.post<ApiResponse<ExpenseResponse>>(`${this.baseUrl}/${id}/cancel`, request);
   }

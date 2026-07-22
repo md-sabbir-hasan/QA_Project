@@ -1,5 +1,5 @@
 export type ExpensePaymentStatus = 'UNPAID' | 'PARTIAL' | 'PAID';
-export type ExpenseStatus = 'POSTED' | 'CANCELLED';
+export type ExpenseStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 
 export interface ExpenseRequest {
   expenseDate: string;

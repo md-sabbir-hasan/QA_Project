@@ -23,7 +23,7 @@ export class ExpenseList implements OnInit {
   readonly status = signal('');
 
   readonly paymentStatuses: ExpensePaymentStatus[] = ['UNPAID', 'PARTIAL', 'PAID'];
-  readonly statuses: ExpenseStatus[] = ['POSTED', 'CANCELLED'];
+  readonly statuses: ExpenseStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 
   readonly filteredExpenses = computed(() => {
     let list = [...this.expenses()];
@@ -95,6 +95,10 @@ export class ExpenseList implements OnInit {
     return this.expenses().filter((e) => e.status === 'POSTED').length;
   }
 
+  draftCount(): number {
+    return this.expenses().filter((e) => e.status === 'DRAFT').length;
+  }
+
   cancelledCount(): number {
     return this.expenses().filter((e) => e.status === 'CANCELLED').length;
   }
@@ -105,5 +109,23 @@ export class ExpenseList implements OnInit {
 
   getStatusClass(status: ExpenseStatus): string {
     return status.toLowerCase();
+  }
+
+  async postExpense(id: number): Promise<void> {
+    const confirmed = await this.alert.confirm('Post this expense? Journal entry will be created and cannot be undone by simply editing.');
+    if (!confirmed) return;
+
+    this.expenseService.post(id).subscribe({
+      next: (res) => {
+        this.alert.success('Expense posted');
+        if (res.data.budgetWarnings && res.data.budgetWarnings.length > 0) {
+          for (const w of res.data.budgetWarnings) {
+            this.alert.warning(w.message);
+          }
+        }
+        this.loadExpenses();
+      },
+      error: (error) => this.alert.error(error?.error?.message ?? 'Failed to post expense'),
+    });
   }
 }

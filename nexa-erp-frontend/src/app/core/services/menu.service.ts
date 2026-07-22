@@ -105,6 +105,13 @@ export class MenuService {
           },
 
           {
+            label: 'Recurring Expenses',
+            icon: 'bi-arrow-repeat',
+            route: APP_ROUTES.RECURRING_EXPENSE,
+            permission: PERMISSIONS.VIEW_RECURRING_EXPENSE,
+          },
+
+          {
             label: 'Payments',
             icon: 'bi-credit-card',
             route: APP_ROUTES.PAYMENT,

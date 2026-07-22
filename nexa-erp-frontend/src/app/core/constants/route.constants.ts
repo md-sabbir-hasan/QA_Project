@@ -18,6 +18,7 @@ export const APP_ROUTES = {
   BANK_RECONCILIATION: '/banking/reconciliation',
   FIXED_ASSETS: '/fixed-assets',
   BUDGET: '/budget',
+  RECURRING_EXPENSE: '/recurring-expense',
 
   REPORTS: '/reports',
   LEDGER: '/reports/ledger',

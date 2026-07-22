@@ -23,6 +23,11 @@
       <strong>{{ unpaidTotal() | number:'1.2-2' }}</strong>
     </div>
 
+    <div class="summary-card draft">
+      <span>Draft (Pending Review)</span>
+      <strong>{{ draftCount() }}</strong>
+    </div>
+
     <div class="summary-card posted">
       <span>Posted</span>
       <strong>{{ postedCount() }}</strong>
@@ -109,8 +114,11 @@
               </span>
             </td>
 
-            <td>
+            <td class="actions-cell">
               <a [routerLink]="['/expense', expense.id]" class="btn-view">View</a>
+              @if (expense.status === 'DRAFT') {
+              <button class="btn-post" type="button" (click)="postExpense(expense.id)">Post</button>
+              }
             </td>
           </tr>
           } @empty {

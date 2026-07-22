@@ -179,6 +179,20 @@ export const routes: Routes = [
           import('./features/expense/pages/expense-detail/expense-detail').then((m) => m.ExpenseDetail),
       },
 
+      // Recurring Expense
+      {
+        path: 'recurring-expense',
+        loadComponent: () =>
+          import('./features/recurring-expense/pages/recurring-expense-list/recurring-expense-list')
+            .then((m) => m.RecurringExpenseList),
+      },
+      {
+        path: 'recurring-expense/new',
+        loadComponent: () =>
+          import('./features/recurring-expense/pages/recurring-expense-form/recurring-expense-form')
+            .then((m) => m.RecurringExpenseForm),
+      },
+
       // Budget
       {
         path: 'budget',

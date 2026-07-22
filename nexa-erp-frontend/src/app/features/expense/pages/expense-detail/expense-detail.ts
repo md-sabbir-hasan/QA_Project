@@ -70,4 +70,27 @@ export class ExpenseDetail implements OnInit {
       },
     });
   }
+
+  async postExpense(): Promise<void> {
+    const expense = this.expense();
+    if (!expense) return;
+
+    const confirmed = await this.alert.confirm(`Post ${expense.expenseNumber}? This will create the journal entry.`);
+    if (!confirmed) return;
+
+    this.expenseService.post(expense.id).subscribe({
+      next: (res) => {
+        this.expense.set(res.data);
+        this.alert.success('Expense posted');
+
+        if (res.data.budgetWarnings && res.data.budgetWarnings.length > 0) {
+          for (const w of res.data.budgetWarnings) {
+            this.alert.warning(w.message);
+          }
+        }
+      },
+      error: (error) => this.alert.error(error?.error?.message ?? 'Failed to post expense'),
+    });
+  }
+
 }
