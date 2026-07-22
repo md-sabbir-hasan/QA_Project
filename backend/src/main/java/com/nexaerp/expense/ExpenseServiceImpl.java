@@ -54,6 +54,16 @@ public class ExpenseServiceImpl implements ExpenseService {
     @Override
     @Transactional
     public ExpenseResponseDto create(ExpenseRequestDto request) {
+        return createInternal(request, null);
+    }
+
+    @Override
+    @Transactional
+    public ExpenseResponseDto createFromRecurringTemplate(ExpenseRequestDto request, Long recurringTemplateId) {
+        return createInternal(request, recurringTemplateId);
+    }
+
+    private ExpenseResponseDto createInternal(ExpenseRequestDto request, Long recurringTemplateId) {
 
         Account expenseAccount = getAccount(request.getExpenseAccountId());
         if (expenseAccount.getType() != AccountType.EXPENSE) {
@@ -80,6 +90,44 @@ public class ExpenseServiceImpl implements ExpenseService {
             throw new BusinessRuleException("partyId is required when paidImmediately = false (pay later)");
         }
 
+        boolean isFromRecurring = recurringTemplateId != null;
+
+        // Recurring-generated expenses land as DRAFT — no journal entry, no money
+        // movement — until someone explicitly clicks "Post". Manual entries (this
+        // method called with recurringTemplateId = null) keep posting immediately,
+        // since the person is already reviewing it as they submit the form.
+        if (isFromRecurring) {
+            Expense draft = Expense.builder()
+                    .expenseNumber(generateExpenseNumber())
+                    .expenseDate(request.getExpenseDate())
+                    .expenseAccount(expenseAccount)
+                    .paidImmediately(paidImmediately)
+                    .paymentAccount(paymentAccount)
+                    .party(party)
+                    .amount(request.getAmount())
+                    .paidAmount(BigDecimal.ZERO)
+                    .dueAmount(BigDecimal.ZERO)
+                    .paymentStatus(ExpensePaymentStatus.UNPAID)
+                    .referenceNumber(request.getReferenceNumber())
+                    .attachmentUrl(request.getAttachmentUrl())
+                    .notes(request.getNotes())
+                    .status(ExpenseStatus.DRAFT)
+                    .recurringTemplateId(recurringTemplateId)
+                    .build();
+
+            Expense saved = expenseRepository.save(draft);
+
+            auditLogService.log(
+                    AuditAction.CREATED,
+                    "EXPENSE",
+                    saved.getId(),
+                    null,
+                    saved.getExpenseNumber() + " - DRAFT (awaiting review from recurring template)"
+            );
+
+            return toResponse(saved, Collections.emptyList());
+        }
+
         accountingPeriodService.validatePostingDate(request.getExpenseDate());
 
         Expense expense = Expense.builder()
@@ -97,31 +145,16 @@ public class ExpenseServiceImpl implements ExpenseService {
                 .attachmentUrl(request.getAttachmentUrl())
                 .notes(request.getNotes())
                 .status(ExpenseStatus.POSTED)
+                .recurringTemplateId(null)
                 .build();
 
         Expense saved = expenseRepository.save(expense);
 
-        // Dr Expense Account, Cr (Cash/Bank if paid now, else Accounts Payable)
         Account creditAccount = paidImmediately
                 ? paymentAccount
                 : systemSettingsService.getAccount(SettingKey.DEFAULT_PAYABLE_ACCOUNT);
 
-        JournalEntry entry = new JournalEntry();
-        entry.setEntryNumber(generateJournalNumber());
-        entry.setDate(request.getExpenseDate());
-        entry.setDescription("Expense - " + saved.getExpenseNumber() + " - " + expenseAccount.getName());
-        entry.setType(paidImmediately ? JournalEntryType.CASH : JournalEntryType.GENERAL);
-        entry.setStatus(JournalStatus.POSTED);
-        entry.setSourceType(JournalSourceType.EXPENSE_CLAIM);
-        entry.setSourceId(saved.getId());
-        entry.setTotalAmount(request.getAmount());
-        entry.setReferenceNumber(saved.getExpenseNumber());
-        JournalEntry savedEntry = journalEntryRepository.save(entry);
-
-        addLine(savedEntry, expenseAccount, request.getAmount(), BigDecimal.ZERO,
-                "Expense - " + saved.getExpenseNumber());
-        addLine(savedEntry, creditAccount, BigDecimal.ZERO, request.getAmount(),
-                "Expense - " + saved.getExpenseNumber());
+        postJournalForExpense(saved, creditAccount);
 
         auditLogService.log(
                 AuditAction.CREATED,
@@ -133,6 +166,48 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         List<BudgetWarningDto> budgetWarnings = budgetCheckService
                 .checkExpenseAccount(expenseAccount, request.getExpenseDate(), request.getAmount())
+                .map(List::of)
+                .orElse(Collections.emptyList());
+
+        return toResponse(saved, budgetWarnings);
+    }
+
+    @Override
+    @Transactional
+    public ExpenseResponseDto post(Long id) {
+        Expense expense = findOrThrow(id);
+
+        if (expense.getStatus() != ExpenseStatus.DRAFT) {
+            throw new BusinessRuleException("Only a DRAFT expense can be posted");
+        }
+
+        accountingPeriodService.validatePostingDate(expense.getExpenseDate());
+
+        boolean paidImmediately = Boolean.TRUE.equals(expense.getPaidImmediately());
+
+        Account creditAccount = paidImmediately
+                ? expense.getPaymentAccount()
+                : systemSettingsService.getAccount(SettingKey.DEFAULT_PAYABLE_ACCOUNT);
+
+        postJournalForExpense(expense, creditAccount);
+
+        expense.setStatus(ExpenseStatus.POSTED);
+        expense.setPaidAmount(paidImmediately ? expense.getAmount() : BigDecimal.ZERO);
+        expense.setDueAmount(paidImmediately ? BigDecimal.ZERO : expense.getAmount());
+        expense.setPaymentStatus(paidImmediately ? ExpensePaymentStatus.PAID : ExpensePaymentStatus.UNPAID);
+
+        Expense saved = expenseRepository.save(expense);
+
+        auditLogService.log(
+                AuditAction.POSTED,
+                "EXPENSE",
+                saved.getId(),
+                ExpenseStatus.DRAFT.name(),
+                ExpenseStatus.POSTED.name()
+        );
+
+        List<BudgetWarningDto> budgetWarnings = budgetCheckService
+                .checkExpenseAccount(expense.getExpenseAccount(), expense.getExpenseDate(), expense.getAmount())
                 .map(List::of)
                 .orElse(Collections.emptyList());
 
@@ -156,6 +231,24 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         if (expense.getStatus() == ExpenseStatus.CANCELLED) {
             throw new BusinessRuleException("Expense " + expense.getExpenseNumber() + " is already cancelled");
+        }
+
+        if (expense.getStatus() == ExpenseStatus.DRAFT) {
+            // Nothing was posted yet — no journal to reverse, just mark it cancelled
+            expense.setStatus(ExpenseStatus.CANCELLED);
+            expense.setCancelledAt(LocalDateTime.now());
+            expense.setCancelReason(request.getReason());
+            Expense saved = expenseRepository.save(expense);
+
+            auditLogService.log(
+                    AuditAction.CANCELLED,
+                    "EXPENSE",
+                    saved.getId(),
+                    ExpenseStatus.DRAFT.name(),
+                    ExpenseStatus.CANCELLED.name()
+            );
+
+            return toResponse(saved);
         }
 
         // If money has already been paid against this expense via the Payment module
@@ -200,15 +293,17 @@ public class ExpenseServiceImpl implements ExpenseService {
         expense.setDueAmount(BigDecimal.ZERO);
         expense.setPaymentStatus(ExpensePaymentStatus.UNPAID);
 
+        Expense saved = expenseRepository.save(expense);
+
         auditLogService.log(
                 AuditAction.CANCELLED,
                 "EXPENSE",
-                expense.getId(),
+                saved.getId(),
                 ExpenseStatus.POSTED.name(),
                 ExpenseStatus.CANCELLED.name()
         );
 
-        return toResponse(expenseRepository.save(expense));
+        return toResponse(saved);
     }
 
     @Override
@@ -216,10 +311,31 @@ public class ExpenseServiceImpl implements ExpenseService {
     public ExpenseResponseDto attachReceipt(Long id, String attachmentUrl) {
         Expense expense = findOrThrow(id);
         expense.setAttachmentUrl(attachmentUrl);
-        return toResponse(expenseRepository.save(expense));
+        return toResponse(expenseRepository.save(expense), Collections.emptyList());
     }
 
     // _______ Private helpers __________
+
+    private void postJournalForExpense(Expense expense, Account creditAccount) {
+        boolean paidImmediately = Boolean.TRUE.equals(expense.getPaidImmediately());
+
+        JournalEntry entry = new JournalEntry();
+        entry.setEntryNumber(generateJournalNumber());
+        entry.setDate(expense.getExpenseDate());
+        entry.setDescription("Expense - " + expense.getExpenseNumber() + " - " + expense.getExpenseAccount().getName());
+        entry.setType(paidImmediately ? JournalEntryType.CASH : JournalEntryType.GENERAL);
+        entry.setStatus(JournalStatus.POSTED);
+        entry.setSourceType(JournalSourceType.EXPENSE_CLAIM);
+        entry.setSourceId(expense.getId());
+        entry.setTotalAmount(expense.getAmount());
+        entry.setReferenceNumber(expense.getExpenseNumber());
+        JournalEntry savedEntry = journalEntryRepository.save(entry);
+
+        addLine(savedEntry, expense.getExpenseAccount(), expense.getAmount(), BigDecimal.ZERO,
+                "Expense - " + expense.getExpenseNumber());
+        addLine(savedEntry, creditAccount, BigDecimal.ZERO, expense.getAmount(),
+                "Expense - " + expense.getExpenseNumber());
+    }
 
     private void addLine(JournalEntry entry, Account account, BigDecimal debit, BigDecimal credit, String description) {
         JournalLine line = new JournalLine();
@@ -296,32 +412,9 @@ public class ExpenseServiceImpl implements ExpenseService {
     }
 
     private ExpenseResponseDto toResponse(Expense e) {
-        return ExpenseResponseDto.builder()
-                .id(e.getId())
-                .expenseNumber(e.getExpenseNumber())
-                .expenseDate(e.getExpenseDate())
-                .expenseAccountId(e.getExpenseAccount().getId())
-                .expenseAccountName(e.getExpenseAccount().getName())
-                .paidImmediately(e.getPaidImmediately())
-                .paymentAccountId(e.getPaymentAccount() != null ? e.getPaymentAccount().getId() : null)
-                .paymentAccountName(e.getPaymentAccount() != null ? e.getPaymentAccount().getName() : null)
-                .partyId(e.getParty() != null ? e.getParty().getId() : null)
-                .partyName(e.getParty() != null ? e.getParty().getName() : null)
-                .amount(e.getAmount())
-                .paidAmount(e.getPaidAmount())
-                .dueAmount(e.getDueAmount())
-                .paymentStatus(e.getPaymentStatus())
-                .referenceNumber(e.getReferenceNumber())
-                .attachmentUrl(e.getAttachmentUrl())
-                .notes(e.getNotes())
-                .status(e.getStatus())
-                .cancelledAt(e.getCancelledAt())
-                .cancelReason(e.getCancelReason())
-                .createdAt(e.getCreatedAt())
-                .build();
+        return toResponse(e, Collections.emptyList());
     }
 
-    // overload
     private ExpenseResponseDto toResponse(Expense e, List<BudgetWarningDto> budgetWarnings) {
         return ExpenseResponseDto.builder()
                 .id(e.getId())
@@ -345,6 +438,7 @@ public class ExpenseServiceImpl implements ExpenseService {
                 .cancelledAt(e.getCancelledAt())
                 .cancelReason(e.getCancelReason())
                 .createdAt(e.getCreatedAt())
+                .recurringTemplateId(e.getRecurringTemplateId())
                 .budgetWarnings(budgetWarnings)
                 .build();
     }

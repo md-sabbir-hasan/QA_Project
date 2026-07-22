@@ -74,4 +74,7 @@ public class Expense extends BaseEntity {
     private LocalDateTime cancelledAt;
     private Long cancelledBy;
     private String cancelReason;
+
+    @Column(name = "recurring_template_id")
+    private Long recurringTemplateId;
 }

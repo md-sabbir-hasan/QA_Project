@@ -44,4 +44,10 @@ public class ExpenseController {
             @PathVariable Long id, @Valid @RequestBody ExpenseCancelRequestDto request) {
         return ResponseEntity.ok(ApiResponse.success("Expense cancelled", expenseService.cancel(id, request)));
     }
+
+    @PostMapping("/{id}/post")
+    @PreAuthorize("hasAuthority('CREATE_EXPENSE')")
+    public ResponseEntity<ApiResponse<ExpenseResponseDto>> post(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Expense posted", expenseService.post(id)));
+    }
 }

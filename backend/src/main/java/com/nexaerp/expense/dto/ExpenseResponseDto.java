@@ -52,4 +52,6 @@ public class ExpenseResponseDto {
 
     //budget
     private List<BudgetWarningDto> budgetWarnings;
+
+    private Long recurringTemplateId;
 }
