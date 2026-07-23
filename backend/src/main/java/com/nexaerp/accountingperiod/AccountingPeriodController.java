@@ -2,6 +2,7 @@ package com.nexaerp.accountingperiod;
 
 import com.nexaerp.accountingperiod.dto.AccountingPeriodRequestDto;
 import com.nexaerp.accountingperiod.dto.AccountingPeriodResponseDto;
+import com.nexaerp.accountingperiod.dto.PeriodCloseChecklistResponseDto;
 import com.nexaerp.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,14 @@ public class AccountingPeriodController {
             @RequestParam(required = false) LocalDate date
     ) {
         return ResponseEntity.ok(ApiResponse.success(accountingPeriodService.getCurrent(date)));
+    }
+
+    @GetMapping("/{id}/close-checklist")
+    @PreAuthorize("hasAuthority('VIEW_ACCOUNTING_PERIOD')")
+    public ResponseEntity<ApiResponse<PeriodCloseChecklistResponseDto>> getCloseChecklist(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(accountingPeriodService.getCloseChecklist(id)));
     }
 
     @PostMapping
@@ -98,6 +107,18 @@ public class AccountingPeriodController {
         return ResponseEntity.ok(ApiResponse.success(
                 "Accounting period closed",
                 accountingPeriodService.close(id, remarks)
+        ));
+    }
+
+    @PatchMapping("/{id}/lock")
+    @PreAuthorize("hasAuthority('LOCK_ACCOUNTING_PERIOD')")
+    public ResponseEntity<ApiResponse<AccountingPeriodResponseDto>> lock(
+            @PathVariable Long id,
+            @RequestParam(required = false) String remarks
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Accounting period locked",
+                accountingPeriodService.lock(id, remarks)
         ));
     }
 

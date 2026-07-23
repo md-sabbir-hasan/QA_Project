@@ -15,5 +15,6 @@ public enum AuditAction {
     PASSWORD_CHANGED,
     UPLOADED,
     CLOSED,
-    OPENED
+    OPENED,
+    LOCKED
 }

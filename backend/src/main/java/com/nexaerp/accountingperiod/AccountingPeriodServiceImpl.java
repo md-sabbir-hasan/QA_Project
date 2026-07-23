@@ -2,6 +2,7 @@ package com.nexaerp.accountingperiod;
 
 import com.nexaerp.accountingperiod.dto.AccountingPeriodRequestDto;
 import com.nexaerp.accountingperiod.dto.AccountingPeriodResponseDto;
+import com.nexaerp.accountingperiod.dto.PeriodCloseChecklistResponseDto;
 import com.nexaerp.audit.AuditAction;
 import com.nexaerp.audit.AuditLogService;
 import com.nexaerp.common.exception.BusinessRuleException;
@@ -21,6 +22,7 @@ import java.time.YearMonth;
 import java.time.format.TextStyle;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +34,7 @@ public class AccountingPeriodServiceImpl implements AccountingPeriodService {
     private final FiscalYearRepository fiscalYearRepository;
     private final AuditLogService auditLogService;
     private final UserRepository userRepository;
+    private final PeriodCloseValidationService periodCloseValidationService;
 
     @Override
     @Transactional
@@ -108,8 +111,8 @@ public class AccountingPeriodServiceImpl implements AccountingPeriodService {
     public AccountingPeriodResponseDto update(Long id, AccountingPeriodRequestDto request) {
         AccountingPeriod period = getPeriod(id);
 
-        if (period.getStatus() == AccountingPeriodStatus.CLOSED) {
-            throw new BusinessRuleException("Closed accounting period cannot be edited");
+        if (period.getStatus() != AccountingPeriodStatus.OPEN) {
+            throw new BusinessRuleException("Only an open accounting period can be edited");
         }
 
         FiscalYear fiscalYear = getFiscalYear(request.getFiscalYearId());
@@ -142,7 +145,7 @@ public class AccountingPeriodServiceImpl implements AccountingPeriodService {
         List<AccountingPeriod> periods = fiscalYearId == null
                 ? accountingPeriodRepository.findByDeletedAtIsNullOrderByStartDateDesc()
                 : accountingPeriodRepository
-                  .findByFiscalYearIdAndDeletedAtIsNullOrderByPeriodNumberAsc(fiscalYearId);
+                .findByFiscalYearIdAndDeletedAtIsNullOrderByPeriodNumberAsc(fiscalYearId);
 
         return periods.stream().map(this::toResponse).toList();
     }
@@ -161,6 +164,10 @@ public class AccountingPeriodServiceImpl implements AccountingPeriodService {
 
         if (period.getStatus() == AccountingPeriodStatus.OPEN) {
             throw new BusinessRuleException("Accounting period is already open");
+        }
+
+        if (period.getStatus() == AccountingPeriodStatus.LOCKED) {
+            throw new BusinessRuleException("Locked accounting period cannot be reopened");
         }
 
         validateFiscalYearCanAcceptPeriods(period.getFiscalYear());
@@ -187,6 +194,19 @@ public class AccountingPeriodServiceImpl implements AccountingPeriodService {
             throw new BusinessRuleException("Accounting period is already closed");
         }
 
+        if (period.getStatus() == AccountingPeriodStatus.LOCKED) {
+            throw new BusinessRuleException("Locked accounting period cannot be closed again");
+        }
+
+        PeriodCloseChecklistResponseDto checklist = periodCloseValidationService.runChecklist(id);
+        if (!checklist.isAllPassed()) {
+            String pendingItems = checklist.getChecks().stream()
+                    .filter(check -> !check.isPassed())
+                    .map(check -> check.getName() + " (" + check.getCount() + ")")
+                    .collect(Collectors.joining(", "));
+            throw new BusinessRuleException("Cannot close period. Pending items found: " + pendingItems);
+        }
+
         String oldValue = auditValue(period);
         period.setStatus(AccountingPeriodStatus.CLOSED);
         period.setClosedAt(LocalDateTime.now());
@@ -202,11 +222,39 @@ public class AccountingPeriodServiceImpl implements AccountingPeriodService {
 
     @Override
     @Transactional
+    public AccountingPeriodResponseDto lock(Long id, String remarks) {
+        AccountingPeriod period = getPeriod(id);
+
+        if (period.getStatus() != AccountingPeriodStatus.CLOSED) {
+            throw new BusinessRuleException("Only a closed accounting period can be locked");
+        }
+
+        String oldValue = auditValue(period);
+        period.setStatus(AccountingPeriodStatus.LOCKED);
+        period.setLockedAt(LocalDateTime.now());
+        period.setLockedBy(getCurrentUserId());
+        if (remarks != null) {
+            period.setRemarks(trimToNull(remarks));
+        }
+
+        AccountingPeriod saved = accountingPeriodRepository.save(period);
+        auditLogService.log(AuditAction.LOCKED, ENTITY_NAME, saved.getId(), oldValue, auditValue(saved));
+        return toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PeriodCloseChecklistResponseDto getCloseChecklist(Long id) {
+        return periodCloseValidationService.runChecklist(id);
+    }
+
+    @Override
+    @Transactional
     public void delete(Long id) {
         AccountingPeriod period = getPeriod(id);
 
-        if (period.getStatus() == AccountingPeriodStatus.CLOSED) {
-            throw new BusinessRuleException("Closed accounting period cannot be deleted");
+        if (period.getStatus() != AccountingPeriodStatus.OPEN) {
+            throw new BusinessRuleException("Only an open accounting period can be deleted");
         }
 
         String oldValue = auditValue(period);
@@ -224,9 +272,10 @@ public class AccountingPeriodServiceImpl implements AccountingPeriodService {
 
         AccountingPeriod period = findSinglePeriodForDate(postingDate);
 
-        if (period.getStatus() == AccountingPeriodStatus.CLOSED) {
+        if (period.getStatus() != AccountingPeriodStatus.OPEN) {
             throw new BusinessRuleException(
-                    "Posting is not allowed. Accounting period '" + period.getName() + "' is closed"
+                    "Posting is not allowed. Accounting period '" + period.getName() + "' is "
+                            + period.getStatus().name().toLowerCase()
             );
         }
 
@@ -254,11 +303,11 @@ public class AccountingPeriodServiceImpl implements AccountingPeriodService {
 
         boolean duplicateNumber = existingId == null
                 ? accountingPeriodRepository
-                  .existsByFiscalYearIdAndPeriodNumberAndDeletedAtIsNull(
-                          fiscalYear.getId(), request.getPeriodNumber())
+                .existsByFiscalYearIdAndPeriodNumberAndDeletedAtIsNull(
+                        fiscalYear.getId(), request.getPeriodNumber())
                 : accountingPeriodRepository
-                  .existsByFiscalYearIdAndPeriodNumberAndIdNotAndDeletedAtIsNull(
-                          fiscalYear.getId(), request.getPeriodNumber(), existingId);
+                .existsByFiscalYearIdAndPeriodNumberAndIdNotAndDeletedAtIsNull(
+                        fiscalYear.getId(), request.getPeriodNumber(), existingId);
 
         if (duplicateNumber) {
             throw new BusinessRuleException(
@@ -336,6 +385,8 @@ public class AccountingPeriodServiceImpl implements AccountingPeriodService {
                 .current(!today.isBefore(period.getStartDate()) && !today.isAfter(period.getEndDate()))
                 .closedAt(period.getClosedAt())
                 .closedBy(period.getClosedBy())
+                .lockedAt(period.getLockedAt())
+                .lockedBy(period.getLockedBy())
                 .remarks(period.getRemarks())
                 .createdAt(period.getCreatedAt())
                 .updatedAt(period.getUpdatedAt())

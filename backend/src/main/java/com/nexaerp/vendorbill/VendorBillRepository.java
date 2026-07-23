@@ -43,4 +43,6 @@ public interface VendorBillRepository extends JpaRepository<VendorBill, Long> {
             "AND b.status <> com.nexaerp.vendorbill.VendorBillStatus.CANCELLED")
     BigDecimal sumGrandTotalBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
+    List<VendorBill> findByStatusAndBillDateLessThanEqual(VendorBillStatus status, LocalDate date);
+
 }

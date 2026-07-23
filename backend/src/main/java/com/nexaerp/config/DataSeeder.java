@@ -161,7 +161,8 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"EDIT_ACCOUNTING_PERIOD", "Edit Accounting Period", "ACCOUNTING_PERIOD"},
                 new Object[]{"OPEN_ACCOUNTING_PERIOD", "Open Accounting Period", "ACCOUNTING_PERIOD"},
                 new Object[]{"CLOSE_ACCOUNTING_PERIOD", "Close Accounting Period", "ACCOUNTING_PERIOD"},
-                new Object[]{"DELETE_ACCOUNTING_PERIOD", "Delete Accounting Period", "ACCOUNTING_PERIOD"}
+                new Object[]{"DELETE_ACCOUNTING_PERIOD", "Delete Accounting Period", "ACCOUNTING_PERIOD"},
+                new Object[]{"LOCK_ACCOUNTING_PERIOD", "Lock Accounting Period", "ACCOUNTING_PERIOD"}
                 );
 
         for (Object[] p : permissions) {

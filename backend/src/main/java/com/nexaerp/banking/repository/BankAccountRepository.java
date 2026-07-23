@@ -28,4 +28,6 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, Long> 
         WHERE a.isActive = true
     """)
     BigDecimal sumActiveBalances();
+
+    List<BankAccount> findByIsActiveTrueAndCurrentBalanceLessThan(BigDecimal amount);
 }

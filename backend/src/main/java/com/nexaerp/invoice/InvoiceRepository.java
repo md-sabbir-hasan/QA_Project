@@ -42,5 +42,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             "AND i.status <> com.nexaerp.invoice.InvoiceStatus.DRAFT " +
             "AND i.status <> com.nexaerp.invoice.InvoiceStatus.CANCELLED")
     BigDecimal sumGrandTotalBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    List<Invoice> findByStatusAndInvoiceDateLessThanEqual(InvoiceStatus status, LocalDate date);
 }
 

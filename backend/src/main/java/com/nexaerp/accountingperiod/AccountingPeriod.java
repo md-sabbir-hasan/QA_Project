@@ -62,6 +62,12 @@ public class AccountingPeriod extends BaseEntity {
     @Column(name = "closed_by")
     private Long closedBy;
 
+    @Column(name = "locked_at")
+    private LocalDateTime lockedAt;
+
+    @Column(name = "locked_by")
+    private Long lockedBy;
+
     @Column(length = 500)
     private String remarks;
 }

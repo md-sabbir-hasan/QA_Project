@@ -24,6 +24,8 @@ public class AccountingPeriodResponseDto {
     private boolean current;
     private LocalDateTime closedAt;
     private Long closedBy;
+    private LocalDateTime lockedAt;
+    private Long lockedBy;
     private String remarks;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

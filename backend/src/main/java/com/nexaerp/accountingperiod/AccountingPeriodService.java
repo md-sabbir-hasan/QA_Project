@@ -2,6 +2,7 @@ package com.nexaerp.accountingperiod;
 
 import com.nexaerp.accountingperiod.dto.AccountingPeriodRequestDto;
 import com.nexaerp.accountingperiod.dto.AccountingPeriodResponseDto;
+import com.nexaerp.accountingperiod.dto.PeriodCloseChecklistResponseDto;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -23,6 +24,10 @@ public interface AccountingPeriodService {
     AccountingPeriodResponseDto open(Long id, String remarks);
 
     AccountingPeriodResponseDto close(Long id, String remarks);
+
+    AccountingPeriodResponseDto lock(Long id, String remarks);
+
+    PeriodCloseChecklistResponseDto getCloseChecklist(Long id);
 
     void delete(Long id);
 

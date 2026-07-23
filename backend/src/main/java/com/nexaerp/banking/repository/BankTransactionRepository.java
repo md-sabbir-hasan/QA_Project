@@ -37,4 +37,6 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
 
 
     Optional<BankTransaction> findByReferenceNumber(String referenceNumber);
+
+    List<BankTransaction> findByReconciledFalseAndVoidedFalseAndTransactionDateLessThanEqual(LocalDate date);
 }
