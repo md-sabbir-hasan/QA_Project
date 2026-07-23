@@ -10,11 +10,12 @@ import {
   VendorBillStatus,
 } from '../../models/vendor-bill.model';
 import { VendorBillService } from '../../services/vendor-bill.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-vendor-bill-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, DatePipe, DecimalPipe],
+  imports: [CommonModule, FormsModule, RouterLink, DatePipe, DecimalPipe, HasPermissionDirective],
   templateUrl: './vendor-bill-list.html',
   styleUrl: './vendor-bill-list.scss',
 })

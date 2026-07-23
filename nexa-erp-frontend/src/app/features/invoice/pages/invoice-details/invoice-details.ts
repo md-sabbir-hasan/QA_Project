@@ -5,11 +5,12 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AlertService } from '../../../../core/services/alert.service';
 import { CancelledReason, Invoice, InvoiceStatus } from '../../models/invoice.model';
 import { InvoiceService } from '../../services/invoice.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-invoice-details',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, DecimalPipe],
+  imports: [CommonModule, RouterLink, DatePipe, DecimalPipe, HasPermissionDirective],
   templateUrl: './invoice-details.html',
   styleUrl: './invoice-details.scss',
 })

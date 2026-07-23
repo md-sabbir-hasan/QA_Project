@@ -5,11 +5,12 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AlertService } from '../../../../core/services/alert.service';
 import { ExpenseResponse } from '../../models/expense.model';
 import { ExpenseService } from '../../services/expense.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-expense-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, HasPermissionDirective],
   templateUrl: './expense-detail.html',
   styleUrl: './expense-detail.scss',
 })

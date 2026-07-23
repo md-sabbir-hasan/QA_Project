@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AlertService } from '../../../../core/services/alert.service';
 import { PaymentResponse } from '../../models/payment.model';
 import { PaymentService } from '../../services/payment.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-payment-details',
@@ -13,7 +14,8 @@ import { PaymentService } from '../../services/payment.service';
     CommonModule,
     RouterLink,
     DecimalPipe,
-    DatePipe
+    DatePipe,
+    HasPermissionDirective
   ],
   templateUrl: './payment-details.html',
   styleUrl: './payment-details.scss'

@@ -47,7 +47,7 @@ public class AccountController {
     }
 
     @GetMapping("/type/{type}")
-    @PreAuthorize("hasAuthority('VIEW_ACCOUNTS')")
+    @PreAuthorize("hasAnyAuthority('VIEW_ACCOUNTS', 'LOOKUP_ACCOUNTS')")
     public ResponseEntity<ApiResponse<List<AccountResponseDto>>> getByType(
             @PathVariable AccountType type) {
         return ResponseEntity.ok(ApiResponse.success(accountService.getByType(type)));
@@ -71,7 +71,7 @@ public class AccountController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAuthority('VIEW_ACCOUNTS')")
+    @PreAuthorize("hasAnyAuthority('VIEW_ACCOUNTS', 'LOOKUP_ACCOUNTS')")
     public ResponseEntity<ApiResponse<List<AccountResponseDto>>> search(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) AccountType type,

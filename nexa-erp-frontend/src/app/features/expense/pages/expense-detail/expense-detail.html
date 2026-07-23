@@ -13,10 +13,14 @@
     <div class="hero-actions">
       <a routerLink="/expense" class="btn-back">Back to List</a>
       @if (e.status === 'DRAFT') {
-      <button class="btn-post" type="button" (click)="postExpense()">Post Expense</button>
+      <button *appHasPermission="'CREATE_EXPENSE'" class="btn-post" type="button" (click)="postExpense()">
+        Post Expense
+      </button>
       }
       @if (e.status === 'POSTED') {
-      <button class="btn-cancel" type="button" (click)="cancelExpense()">Cancel Expense</button>
+      <button *appHasPermission="'CANCEL_EXPENSE'" class="btn-cancel" type="button" (click)="cancelExpense()">
+        Cancel Expense
+      </button>
       }
     </div>
   </section>
@@ -67,7 +71,7 @@
       <h3>Pay this expense</h3>
       <p>
         Due amount <strong>{{ e.dueAmount | number:'1.2-2' }}</strong> — go to
-        <a routerLink="/payment/new">Payments → New Payment</a>,
+        <a *appHasPermission="'CREATE_PAYMENT'" routerLink="/payment/new">Payments → New Payment</a>,
         select party <strong>{{ e.partyName }}</strong>, Payment Type = PAYMENT,
         and allocate against this expense.
       </p>
@@ -83,11 +87,12 @@
     }
 
     @if (e.status === 'DRAFT') {
-  <section class="draft-notice">
-    ⚠️ Ei expense ta ekhono <strong>DRAFT</strong> — journal entry post hoyni, kono taka kata hoyni ba payable e bosheni।
-    Review kore <strong>"Post Expense"</strong> button e click koro finalize korte।
-  </section>
-  }
+    <section class="draft-notice">
+      ⚠️ Ei expense ta ekhono <strong>DRAFT</strong> — journal entry post hoyni, kono taka kata hoyni ba payable e
+      bosheni।
+      Review kore <strong>"Post Expense"</strong> button e click koro finalize korte।
+    </section>
+    }
   </section>
 
   } @else {

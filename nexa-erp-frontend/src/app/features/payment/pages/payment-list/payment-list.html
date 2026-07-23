@@ -6,7 +6,7 @@
       <p>Manage customer receipts and vendor payments with allocation tracking.</p>
     </div>
 
-    <a routerLink="/payment/new" class="new-btn">
+    <a *appHasPermission="'CREATE_PAYMENT'" routerLink="/payment/new" class="new-btn">
       <i class="bi bi-plus-circle-fill"></i>
       New Payment
     </a>
@@ -132,7 +132,8 @@
                 </a>
 
                 @if (payment.status === 'DRAFT') {
-                <button class="btn-post" type="button" (click)="postPayment(payment)">
+                <button *appHasPermission="'POST_PAYMENT'" class="btn-post" type="button"
+                  (click)="postPayment(payment)">
                   Post
                 </button>
                 }
@@ -142,7 +143,8 @@
                   PDF
                 </button>
 
-                <button class="btn-cancel" type="button" (click)="cancelPayment(payment)">
+                <button *appHasPermission="'CANCEL_PAYMENT'" class="btn-cancel" type="button"
+                  (click)="cancelPayment(payment)">
                   Cancel
                 </button>
                 }

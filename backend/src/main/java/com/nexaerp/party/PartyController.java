@@ -56,7 +56,7 @@ public class PartyController {
     }
 
     @GetMapping("/type/{type}")
-    @PreAuthorize("hasAuthority('VIEW_PARTY')")
+    @PreAuthorize("hasAnyAuthority('VIEW_PARTY', 'LOOKUP_PARTIES')")
     public ResponseEntity<ApiResponse<List<PartyResponseDto>>> getByType(
             @PathVariable PartyType type) {
         return ResponseEntity.ok(ApiResponse.success(partyService.getByType(type)));

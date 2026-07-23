@@ -5,11 +5,12 @@ import { RouterLink } from '@angular/router';
 import { AlertService } from '../../../../core/services/alert.service';
 import { JournalEntry, JournalEntryType, JournalStatus } from '../../models/journal.model';
 import { JournalService } from '../../services/journal.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-journal-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, DatePipe, DecimalPipe],
+  imports: [CommonModule, FormsModule, RouterLink, DatePipe, DecimalPipe, HasPermissionDirective],
   templateUrl: './journal-list.html',
   styleUrl: './journal-list.scss',
 })

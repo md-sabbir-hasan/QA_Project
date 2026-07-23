@@ -13,14 +13,10 @@
       </p>
     </div>
 
-    <a
-      routerLink="/invoice/new"
-      class="new-btn">
+    <a *appHasPermission="'CREATE_INVOICE'" routerLink="/invoice/new" class="new-btn">
 
       <i class="bi bi-plus-circle"></i>
-
       New Invoice
-
     </a>
 
   </section>
@@ -71,41 +67,25 @@
 
   <section class="filter-panel">
 
-    <input
+    <input type="text" placeholder="Search invoice..." [ngModel]="search()" (ngModelChange)="search.set($event)">
 
-      type="text"
-
-      placeholder="Search invoice..."
-
-      [ngModel]="search()"
-
-      (ngModelChange)="search.set($event)">
-
-    <select
-
-      [ngModel]="status()"
-
-      (ngModelChange)="status.set($event)">
+    <select [ngModel]="status()" (ngModelChange)="status.set($event)">
 
       <option value="">All Status</option>
 
       @for (s of statuses; track s) {
 
-        <option [value]="s">
+      <option [value]="s">
 
-          {{ s }}
+        {{ s }}
 
-        </option>
+      </option>
 
       }
 
     </select>
 
-    <button
-
-      class="clear-btn"
-
-      (click)="clearFilter()">
+    <button class="clear-btn" (click)="clearFilter()">
 
       Clear
 
@@ -133,19 +113,19 @@
 
     @if (loading()) {
 
-      <div class="loading-box">
+    <div class="loading-box">
 
-        Loading...
+      Loading...
 
-      </div>
+    </div>
 
     } @else {
 
-      <div class="table-wrap">
+    <div class="table-wrap">
 
-        <table>
+      <table>
 
-          <thead>
+        <thead>
 
           <tr>
 
@@ -167,141 +147,114 @@
 
           </tr>
 
-          </thead>
+        </thead>
 
-          <tbody>
+        <tbody>
 
           @for (invoice of filteredInvoices(); track invoice.id) {
 
-            <tr>
+          <tr>
 
-              <td>
+            <td>
 
-                <strong>
+              <strong>
 
-                  {{ invoice.invoiceNumber }}
+                {{ invoice.invoiceNumber }}
 
-                </strong>
+              </strong>
 
-              </td>
+            </td>
 
-              <td>
+            <td>
 
-                {{ invoice.partyName }}
+              {{ invoice.partyName }}
 
-              </td>
+            </td>
 
-              <td>
+            <td>
 
-                {{ invoice.invoiceDate | date }}
+              {{ invoice.invoiceDate | date }}
 
-              </td>
+            </td>
 
-              <td>
+            <td>
 
-                <span
+              <span class="status" [class]="getStatusClass(invoice.status)">
 
-                  class="status"
+                {{ invoice.status }}
 
-                  [class]="getStatusClass(invoice.status)">
+              </span>
 
-                  {{ invoice.status }}
+            </td>
 
-                </span>
+            <td class="text-end">
 
-              </td>
+              {{ invoice.grandTotal | number:'1.2-2' }}
 
-              <td class="text-end">
+            </td>
 
-                {{ invoice.grandTotal | number:'1.2-2' }}
+            <td class="text-end">
 
-              </td>
+              {{ invoice.paidAmount | number:'1.2-2' }}
 
-              <td class="text-end">
+            </td>
 
-                {{ invoice.paidAmount | number:'1.2-2' }}
+            <td class="text-end">
 
-              </td>
+              {{ invoice.dueAmount | number:'1.2-2' }}
 
-              <td class="text-end">
+            </td>
 
-                {{ invoice.dueAmount | number:'1.2-2' }}
+            <td>
 
-              </td>
+              <div class="action-group">
 
-              <td>
+                <a [routerLink]="['/invoice', invoice.id]" class="btn-view">
 
-                <div class="action-group">
+                  View
 
-                  <a
+                </a>
 
-                    [routerLink]="['/invoice', invoice.id]"
+                @if (invoice.status === 'DRAFT') {
 
-                    class="btn-view">
+                <a *appHasPermission="'EDIT_INVOICE'" [routerLink]="['/invoice', invoice.id, 'edit']" class="btn-edit">
 
-                    View
+                  Edit
+                </a>
 
-                  </a>
+                <button *appHasPermission="'POST_INVOICE'" type="button" class="btn-post"
+                  (click)="postInvoice(invoice)">
 
-                  @if (invoice.status === 'DRAFT') {
+                  Post
+                </button>
+                }
 
-                    <a
+                @if (
+                invoice.status === 'POSTED'
+                ||
+                invoice.status === 'PARTIAL'
+                ) {
 
-                      [routerLink]="['/invoice', invoice.id, 'edit']"
+                <button *appHasPermission="'CANCEL_INVOICE'" type="button" class="btn-cancel"
+                  (click)="cancelInvoice(invoice)">
 
-                      class="btn-edit">
+                  Cancel
+                </button>
+                }
 
-                      Edit
+              </div>
 
-                    </a>
+            </td>
 
-                    <button
-
-                      class="btn-post"
-
-                      (click)="postInvoice(invoice)">
-
-                      Post
-
-                    </button>
-
-                  }
-
-                  @if (
-
-                    invoice.status === 'POSTED'
-
-                    ||
-
-                    invoice.status === 'PARTIAL'
-
-                  ) {
-
-                    <button
-
-                      class="btn-cancel"
-
-                      (click)="cancelInvoice(invoice)">
-
-                      Cancel
-
-                    </button>
-
-                  }
-
-                </div>
-
-              </td>
-
-            </tr>
+          </tr>
 
           }
 
-          </tbody>
+        </tbody>
 
-        </table>
+      </table>
 
-      </div>
+    </div>
 
     }
 

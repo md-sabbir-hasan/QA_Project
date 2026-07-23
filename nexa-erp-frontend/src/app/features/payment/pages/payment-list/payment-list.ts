@@ -10,6 +10,7 @@ import {
   PaymentType,
 } from '../../models/payment.model';
 import { PaymentService } from '../../services/payment.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-payment-list',
@@ -18,6 +19,7 @@ import { PaymentService } from '../../services/payment.service';
     CommonModule,
     FormsModule,
     RouterLink,
+    HasPermissionDirective
   ],
   templateUrl: './payment-list.html',
   styleUrl: './payment-list.scss',

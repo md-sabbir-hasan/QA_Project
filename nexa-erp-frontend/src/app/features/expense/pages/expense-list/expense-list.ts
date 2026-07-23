@@ -6,11 +6,12 @@ import { RouterLink } from '@angular/router';
 import { AlertService } from '../../../../core/services/alert.service';
 import { ExpensePaymentStatus, ExpenseResponse, ExpenseStatus } from '../../models/expense.model';
 import { ExpenseService } from '../../services/expense.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-expense-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, HasPermissionDirective],
   templateUrl: './expense-list.html',
   styleUrl: './expense-list.scss',
 })

@@ -6,7 +6,7 @@
       <p>Record and track small bills — mobile, utility, office supplies etc.</p>
     </div>
 
-    <a routerLink="/expense/new" class="new-btn">
+    <a *appHasPermission="'CREATE_EXPENSE'" routerLink="/expense/new" class="new-btn">
       <i class="bi bi-plus-circle-fill"></i>
       New Expense
     </a>
@@ -117,7 +117,10 @@
             <td class="actions-cell">
               <a [routerLink]="['/expense', expense.id]" class="btn-view">View</a>
               @if (expense.status === 'DRAFT') {
-              <button class="btn-post" type="button" (click)="postExpense(expense.id)">Post</button>
+              <button *appHasPermission="'CREATE_EXPENSE'" class="btn-post" type="button"
+                (click)="postExpense(expense.id)">
+                Post
+              </button>
               }
             </td>
           </tr>

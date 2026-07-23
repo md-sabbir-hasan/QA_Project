@@ -57,6 +57,7 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"CREATE_ACCOUNT", "Create Account", "ACCOUNT"},
                 new Object[]{"EDIT_ACCOUNT", "Edit Account", "ACCOUNT"},
                 new Object[]{"DEACTIVATE_ACCOUNT", "Deactivate Account", "ACCOUNT"},
+                new Object[]{"LOOKUP_ACCOUNTS", "Lookup Accounts", "ACCOUNT"},
 
                 new Object[]{"VIEW_JOURNAL", "View Journal", "JOURNAL"},
                 new Object[]{"CREATE_JOURNAL", "Create Journal", "JOURNAL"},
@@ -87,6 +88,7 @@ public class DataSeeder implements CommandLineRunner {
                 new Object[]{"CREATE_PARTY", "Create Party", "PARTY"},
                 new Object[]{"EDIT_PARTY", "Edit Party", "PARTY"},
                 new Object[]{"DEACTIVATE_PARTY", "Deactivate Party", "PARTY"},
+                new Object[]{"LOOKUP_PARTIES", "Lookup Parties", "PARTY"},
 
                 new Object[]{"VIEW_INVOICE", "View Invoice", "INVOICE"},
                 new Object[]{"CREATE_INVOICE", "Create Invoice", "INVOICE"},
