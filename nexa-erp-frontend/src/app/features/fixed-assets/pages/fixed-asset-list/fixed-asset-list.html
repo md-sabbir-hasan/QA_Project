@@ -1,4 +1,7 @@
 <div class="coa-page">
+  <!-- =======================================================
+       Hero Section
+  ======================================================== -->
   <section class="finance-hero">
     <div>
       <span class="eyebrow">Finance Console</span>
@@ -8,40 +11,56 @@
 
     <div class="hero-actions">
       <button
-      *appHasPermission="'RUN_DEPRECIATION'"
-       class="secondary-btn" type="button" (click)="openRunAllModal()">
+        *appHasPermission="'RUN_DEPRECIATION'"
+        class="secondary-btn"
+        type="button"
+        (click)="openRunAllModal()"
+      >
         <i class="bi bi-calculator"></i>
         Run Depreciation (All)
       </button>
+
       <button
-      *appHasPermission="'CREATE_FIXED_ASSET'"
-       class="hero-btn" type="button" (click)="openRegisterModal()">
+        *appHasPermission="'CREATE_FIXED_ASSET'"
+        class="hero-btn"
+        type="button"
+        (click)="openRegisterModal()"
+      >
         <i class="bi bi-plus-circle"></i>
         Register Asset
       </button>
     </div>
   </section>
 
+  <!-- =======================================================
+       Summary Cards
+  ======================================================== -->
   <section class="metric-grid">
     <div class="metric-card">
       <span>Total Assets</span>
       <strong>{{ assets().length }}</strong>
       <small>at cost</small>
     </div>
+
     <div class="metric-card">
       <span>Total Cost</span>
       <strong>{{ totals.cost | number: '1.2-2' }}</strong>
     </div>
+
     <div class="metric-card debit">
       <span>Accumulated Depreciation</span>
       <strong>{{ totals.accumulatedDepreciation | number: '1.2-2' }}</strong>
     </div>
+
     <div class="metric-card credit">
       <span>Net Book Value</span>
       <strong>{{ totals.bookValue | number: '1.2-2' }}</strong>
     </div>
   </section>
 
+  <!-- =======================================================
+       Asset Register
+  ======================================================== -->
   <section class="accounts-panel">
     <div class="panel-header">
       <h2>Asset Register</h2>
@@ -54,7 +73,9 @@
         Loading assets...
       </div>
     } @else if (assets().length === 0) {
-      <div class="state-box">No fixed assets registered yet.</div>
+      <div class="state-box">
+        No fixed assets registered yet.
+      </div>
     } @else {
       <div class="table-wrap">
         <table>
@@ -69,28 +90,56 @@
               <th class="text-end">Action</th>
             </tr>
           </thead>
+
           <tbody>
-            @for (a of assets(); track a.id) {
+            @for (asset of assets(); track asset.id) {
               <tr>
-                <td><strong>{{ a.assetCode }}</strong><span>{{ a.name }}</span></td>
-                <td>{{ a.depreciationMethod === 'STRAIGHT_LINE' ? 'Straight Line' : 'Reducing Balance' }}</td>
-                <td class="text-end">{{ a.purchaseCost | number: '1.2-2' }}</td>
-                <td class="text-end">{{ a.accumulatedDepreciation | number: '1.2-2' }}</td>
-                <td class="text-end"><strong>{{ a.bookValue | number: '1.2-2' }}</strong></td>
+                <td>
+                  <strong>{{ asset.assetCode }}</strong>
+                  <span>{{ asset.name }}</span>
+                </td>
+
+                <td>
+                  {{
+                    asset.depreciationMethod === 'STRAIGHT_LINE'
+                      ? 'Straight Line'
+                      : 'Reducing Balance'
+                  }}
+                </td>
+
+                <td class="text-end">
+                  {{ asset.purchaseCost | number: '1.2-2' }}
+                </td>
+
+                <td class="text-end">
+                  {{ asset.accumulatedDepreciation | number: '1.2-2' }}
+                </td>
+
+                <td class="text-end">
+                  <strong>
+                    {{ asset.bookValue | number: '1.2-2' }}
+                  </strong>
+                </td>
+
                 <td>
                   <span
                     class="status"
-                    [class.reconciled]="a.status === 'ACTIVE'"
-                    [class.pending]="a.status === 'FULLY_DEPRECIATED'"
-                    [class.voided]="a.status === 'DISPOSED'"
+                    [class.reconciled]="asset.status === 'ACTIVE'"
+                    [class.pending]="asset.status === 'FULLY_DEPRECIATED'"
+                    [class.voided]="asset.status === 'DISPOSED'"
                   >
-                    {{ a.status.replace('_', ' ') }}
+                    {{ asset.status.replace('_', ' ') }}
                   </span>
                 </td>
+
                 <td class="text-end">
                   <button
-                  *appHasPermission="'EDIT_FIXED_ASSET'"
-                   class="icon-action edit" type="button" (click)="openAsset(a)" title="Open">
+                    *appHasPermission="'VIEW_FIXED_ASSET'"
+                    class="icon-action edit"
+                    type="button"
+                    title="Open asset"
+                    (click)="openAsset(asset)"
+                  >
                     <i class="bi bi-arrow-up-right-circle"></i>
                   </button>
                 </td>
@@ -102,108 +151,402 @@
     }
   </section>
 
+  <!-- =======================================================
+       Register Fixed Asset Modal
+  ======================================================== -->
   @if (showRegisterModal()) {
-    <div class="modal-backdrop" (click)="closeRegisterModal()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop">
+      <div class="modal-card">
         <div class="modal-header">
           <div>
             <h2>Register Fixed Asset</h2>
-            <p>Link this asset to its GL accounts so depreciation posts automatically.</p>
+            <p>
+              Link this asset to its GL accounts so depreciation posts
+              automatically.
+            </p>
           </div>
+
           <button
-          *appHasPermission="'DISPOSE_FIXED_ASSET'"
-           class="close-btn" type="button" (click)="closeRegisterModal()">
+            class="close-btn"
+            type="button"
+            [disabled]="submitting()"
+            (click)="closeRegisterModal()"
+          >
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
 
-        <form [formGroup]="registerForm" (ngSubmit)="submitRegister()">
+        <form
+          [formGroup]="registerForm"
+          (ngSubmit)="submitRegister()"
+          novalidate
+        >
           <div class="modal-body">
             <div class="form-grid">
+              <!-- Asset Name -->
               <div class="form-group full">
-                <label>Asset Name</label>
-                <input type="text" formControlName="name" placeholder="e.g. Dell Laptop - Finance Dept" />
+                <label for="assetName">
+                  Asset Name
+                  <span class="required">*</span>
+                </label>
+
+                <input
+                  id="assetName"
+                  type="text"
+                  formControlName="name"
+                  placeholder="e.g. Dell Laptop - Finance Department"
+                />
+
+                @if (
+                  registerForm.controls.name.touched &&
+                  registerForm.controls.name.invalid
+                ) {
+                  <small class="field-error">
+                    Asset name is required.
+                  </small>
+                }
               </div>
 
+              <!-- Description -->
               <div class="form-group full">
-                <label>Description</label>
-                <input type="text" formControlName="description" />
+                <label for="assetDescription">Description</label>
+
+                <input
+                  id="assetDescription"
+                  type="text"
+                  formControlName="description"
+                  placeholder="Optional asset description"
+                />
               </div>
 
+              <!-- Asset Account -->
               <div class="form-group">
-                <label>Asset Account</label>
-                <select formControlName="assetAccountId">
-                  <option [ngValue]="null">Select account</option>
-                  @for (account of accounts(); track account.id) {
-                    <option [ngValue]="account.id">{{ account.name }}</option>
+                <label for="assetAccountId">
+                  Asset Account
+                  <span class="required">*</span>
+                </label>
+
+                <select
+                  id="assetAccountId"
+                  formControlName="assetAccountId"
+                >
+                  <option [ngValue]="null">
+                    Select asset account
+                  </option>
+
+                  @for (
+                    account of assetAccounts;
+                    track account.id
+                  ) {
+                    <option [ngValue]="account.id">
+                      {{ account.code }} — {{ account.name }}
+                    </option>
                   }
                 </select>
+
+                <small class="form-help">
+                  Select the fixed asset cost account.
+                </small>
+
+                @if (
+                  registerForm.controls.assetAccountId.touched &&
+                  registerForm.controls.assetAccountId.invalid
+                ) {
+                  <small class="field-error">
+                    Asset account is required.
+                  </small>
+                }
               </div>
 
+              <!-- Depreciation Expense Account -->
               <div class="form-group">
-                <label>Depreciation Expense Account</label>
-                <select formControlName="depreciationExpenseAccountId">
-                  <option [ngValue]="null">Select account</option>
-                  @for (account of accounts(); track account.id) {
-                    <option [ngValue]="account.id">{{ account.name }}</option>
+                <label for="depreciationExpenseAccountId">
+                  Depreciation Expense Account
+                  <span class="required">*</span>
+                </label>
+
+                <select
+                  id="depreciationExpenseAccountId"
+                  formControlName="depreciationExpenseAccountId"
+                >
+                  <option [ngValue]="null">
+                    Select depreciation expense account
+                  </option>
+
+                  @for (
+                    account of depreciationExpenseAccounts;
+                    track account.id
+                  ) {
+                    <option [ngValue]="account.id">
+                      {{ account.code }} — {{ account.name }}
+                    </option>
                   }
                 </select>
+
+                <small class="form-help">
+                  Depreciation expense will be debited to this account.
+                </small>
+
+                @if (
+                  registerForm.controls.depreciationExpenseAccountId.touched &&
+                  registerForm.controls.depreciationExpenseAccountId.invalid
+                ) {
+                  <small class="field-error">
+                    Depreciation expense account is required.
+                  </small>
+                }
               </div>
 
-              <div class="form-group full">
-                <label>Accumulated Depreciation Account</label>
-                <select formControlName="accumulatedDepreciationAccountId">
-                  <option [ngValue]="null">Select account</option>
-                  @for (account of accounts(); track account.id) {
-                    <option [ngValue]="account.id">{{ account.name }}</option>
+              <!-- Accumulated Depreciation Account -->
+              <div class="form-group">
+                <label for="accumulatedDepreciationAccountId">
+                  Accumulated Depreciation Account
+                  <span class="required">*</span>
+                </label>
+
+                <select
+                  id="accumulatedDepreciationAccountId"
+                  formControlName="accumulatedDepreciationAccountId"
+                >
+                  <option [ngValue]="null">
+                    Select accumulated depreciation account
+                  </option>
+
+                  @for (
+                    account of accumulatedDepreciationAccounts;
+                    track account.id
+                  ) {
+                    <option [ngValue]="account.id">
+                      {{ account.code }} — {{ account.name }}
+                    </option>
                   }
                 </select>
+
+                <small class="form-help">
+                  Depreciation journals will credit this contra-asset account.
+                </small>
+
+                @if (
+                  registerForm.controls.accumulatedDepreciationAccountId.touched &&
+                  registerForm.controls.accumulatedDepreciationAccountId.invalid
+                ) {
+                  <small class="field-error">
+                    Accumulated depreciation account is required.
+                  </small>
+                }
               </div>
 
+              <!-- Payment Source Account -->
               <div class="form-group">
-                <label>Purchase Date</label>
-                <input type="date" formControlName="purchaseDate" />
+                <label for="paymentSourceAccountId">
+                  Payment Source Account
+                  <span class="required">*</span>
+                </label>
+
+                <select
+                  id="paymentSourceAccountId"
+                  formControlName="paymentSourceAccountId"
+                >
+                  <option [ngValue]="null">
+                    Select cash, bank or payable account
+                  </option>
+
+                  @for (
+                    account of paymentSourceAccounts;
+                    track account.id
+                  ) {
+                    <option [ngValue]="account.id">
+                      {{ account.code }} — {{ account.name }}
+                    </option>
+                  }
+                </select>
+
+                <small class="form-help">
+                  Select the cash, bank, or payable account used to purchase
+                  this asset.
+                </small>
+
+                @if (
+                  registerForm.controls.paymentSourceAccountId.touched &&
+                  registerForm.controls.paymentSourceAccountId.invalid
+                ) {
+                  <small class="field-error">
+                    Payment source account is required.
+                  </small>
+                }
               </div>
 
+              <!-- Purchase Date -->
               <div class="form-group">
-                <label>Purchase Cost</label>
-                <input type="number" step="0.01" formControlName="purchaseCost" />
+                <label for="purchaseDate">
+                  Purchase Date
+                  <span class="required">*</span>
+                </label>
+
+                <input
+                  id="purchaseDate"
+                  type="date"
+                  formControlName="purchaseDate"
+                />
+
+                @if (
+                  registerForm.controls.purchaseDate.touched &&
+                  registerForm.controls.purchaseDate.invalid
+                ) {
+                  <small class="field-error">
+                    Purchase date is required.
+                  </small>
+                }
               </div>
 
+              <!-- Purchase Cost -->
               <div class="form-group">
-                <label>Salvage Value</label>
-                <input type="number" step="0.01" formControlName="salvageValue" />
+                <label for="purchaseCost">
+                  Purchase Cost
+                  <span class="required">*</span>
+                </label>
+
+                <input
+                  id="purchaseCost"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  formControlName="purchaseCost"
+                  placeholder="0.00"
+                />
+
+                @if (
+                  registerForm.controls.purchaseCost.touched &&
+                  registerForm.controls.purchaseCost.invalid
+                ) {
+                  <small class="field-error">
+                    Purchase cost must be greater than zero.
+                  </small>
+                }
               </div>
 
+              <!-- Salvage Value -->
               <div class="form-group">
-                <label>Useful Life (years)</label>
-                <input type="number" formControlName="usefulLifeYears" />
+                <label for="salvageValue">
+                  Salvage Value
+                  <span class="required">*</span>
+                </label>
+
+                <input
+                  id="salvageValue"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  formControlName="salvageValue"
+                  placeholder="0.00"
+                />
+
+                @if (
+                  registerForm.controls.salvageValue.touched &&
+                  registerForm.controls.salvageValue.invalid
+                ) {
+                  <small class="field-error">
+                    Salvage value cannot be negative.
+                  </small>
+                }
               </div>
 
+              <!-- Useful Life -->
               <div class="form-group">
-                <label>Depreciation Method</label>
-                <select formControlName="depreciationMethod">
-                  <option value="STRAIGHT_LINE">Straight Line</option>
-                  <option value="REDUCING_BALANCE">Reducing Balance</option>
+                <label for="usefulLifeYears">
+                  Useful Life (Years)
+                  <span class="required">*</span>
+                </label>
+
+                <input
+                  id="usefulLifeYears"
+                  type="number"
+                  min="1"
+                  step="1"
+                  formControlName="usefulLifeYears"
+                  placeholder="5"
+                />
+
+                @if (
+                  registerForm.controls.usefulLifeYears.touched &&
+                  registerForm.controls.usefulLifeYears.invalid
+                ) {
+                  <small class="field-error">
+                    Useful life must be at least 1 year.
+                  </small>
+                }
+              </div>
+
+              <!-- Depreciation Method -->
+              <div class="form-group">
+                <label for="depreciationMethod">
+                  Depreciation Method
+                  <span class="required">*</span>
+                </label>
+
+                <select
+                  id="depreciationMethod"
+                  formControlName="depreciationMethod"
+                >
+                  <option value="STRAIGHT_LINE">
+                    Straight Line
+                  </option>
+
+                  <option value="REDUCING_BALANCE">
+                    Reducing Balance
+                  </option>
                 </select>
               </div>
 
+              <!-- Reducing Balance Rate -->
               @if (isReducingBalance) {
                 <div class="form-group">
-                  <label>Annual Rate (%)</label>
-                  <input type="number" step="0.01" formControlName="reducingBalanceRate" placeholder="e.g. 20" />
+                  <label for="reducingBalanceRate">
+                    Annual Rate (%)
+                    <span class="required">*</span>
+                  </label>
+
+                  <input
+                    id="reducingBalanceRate"
+                    type="number"
+                    min="0.01"
+                    max="100"
+                    step="0.01"
+                    formControlName="reducingBalanceRate"
+                    placeholder="e.g. 20"
+                  />
+
+                  <small class="form-help">
+                    Enter a value greater than 0 and not more than 100.
+                  </small>
                 </div>
               }
             </div>
 
             <div class="modal-actions">
-              <button class="secondary-btn" type="button" style="color:#334155;border-color:#cbd5e1;" (click)="closeRegisterModal()">
+              <button
+                class="secondary-btn"
+                type="button"
+                [disabled]="submitting()"
+                style="color: #334155; border-color: #cbd5e1"
+                (click)="closeRegisterModal()"
+              >
                 Cancel
               </button>
+
               <button
-              *appHasPermission="'CREATE_FIXED_ASSET'"
-               class="hero-btn" type="submit" [disabled]="submitting()">
-                {{ submitting() ? 'Saving...' : 'Register' }}
+                *appHasPermission="'CREATE_FIXED_ASSET'"
+                class="hero-btn"
+                type="submit"
+                [disabled]="submitting()"
+              >
+                @if (submitting()) {
+                  <i class="bi bi-arrow-repeat spin"></i>
+                  Saving...
+                } @else {
+                  <i class="bi bi-check-circle"></i>
+                  Register
+                }
               </button>
             </div>
           </div>
@@ -212,15 +555,27 @@
     </div>
   }
 
+  <!-- =======================================================
+       Run Depreciation Modal
+  ======================================================== -->
   @if (showRunAllModal()) {
-    <div class="modal-backdrop" (click)="closeRunAllModal()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop">
+      <div class="modal-card">
         <div class="modal-header">
           <div>
             <h2>Run Depreciation — All Assets</h2>
-            <p>Posts a catch-up depreciation journal for every active asset, up to this date.</p>
+            <p>
+              Posts catch-up depreciation journals for every active asset up
+              to the selected date.
+            </p>
           </div>
-          <button class="close-btn" type="button" (click)="closeRunAllModal()">
+
+          <button
+            class="close-btn"
+            type="button"
+            [disabled]="submitting()"
+            (click)="closeRunAllModal()"
+          >
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
@@ -228,19 +583,49 @@
         <div class="modal-body">
           <div class="form-grid">
             <div class="form-group full">
-              <label>As-of Date</label>
-              <input type="date" [ngModel]="runAllDate()" (ngModelChange)="runAllDate.set($event)" />
+              <label for="runAllDate">
+                As-of Date
+                <span class="required">*</span>
+              </label>
+
+              <input
+                id="runAllDate"
+                type="date"
+                [ngModel]="runAllDate()"
+                (ngModelChange)="runAllDate.set($event)"
+              />
+
+              <small class="form-help">
+                Depreciation will be calculated and posted up to this date.
+              </small>
             </div>
           </div>
 
           <div class="modal-actions">
-            <button class="secondary-btn" type="button" style="color:#334155;border-color:#cbd5e1;" (click)="closeRunAllModal()">
+            <button
+              class="secondary-btn"
+              type="button"
+              [disabled]="submitting()"
+              style="color: #334155; border-color: #cbd5e1"
+              (click)="closeRunAllModal()"
+            >
               Cancel
             </button>
+
             <button
-            *appHasPermission="'CREATE_FIXED_ASSET'"
-             class="hero-btn" type="button" [disabled]="submitting()" (click)="submitRunAll()">
-              {{ submitting() ? 'Running...' : 'Run Depreciation' }}
+              *appHasPermission="'RUN_DEPRECIATION'"
+              class="hero-btn"
+              type="button"
+              [disabled]="submitting() || !runAllDate()"
+              (click)="submitRunAll()"
+            >
+              @if (submitting()) {
+                <i class="bi bi-arrow-repeat spin"></i>
+                Running...
+              } @else {
+                <i class="bi bi-calculator"></i>
+                Run Depreciation
+              }
             </button>
           </div>
         </div>

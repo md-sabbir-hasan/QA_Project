@@ -40,6 +40,7 @@ export interface FixedAssetRequest {
   assetAccountId: number;
   depreciationExpenseAccountId: number;
   accumulatedDepreciationAccountId: number;
+  paymentSourceAccountId: number;
   purchaseDate: string;
   purchaseCost: number;
   salvageValue: number;
