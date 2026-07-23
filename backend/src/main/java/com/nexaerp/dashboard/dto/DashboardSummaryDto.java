@@ -17,4 +17,6 @@ public class DashboardSummaryDto {
     private SystemSummaryDto system;
     private HealthSummaryDto health;
     private List<RecentActivityDto> recentActivities;
+    private BudgetDashboardDto budget;
+    private ExpenseDashboardDto expense;
 }

@@ -16,4 +16,8 @@ public interface RecurringExpenseTemplateRepository extends JpaRepository<Recurr
 
     List<RecurringExpenseTemplate> findByStatusAndNextRunDateLessThanEqualAndDeletedAtIsNull(
             RecurringExpenseStatus status, LocalDate date);
+
+    long countByStatus(RecurringExpenseStatus status);
+
+    long countByStatusAndNextRunDateLessThanEqualAndDeletedAtIsNull(RecurringExpenseStatus status, LocalDate date);
 }

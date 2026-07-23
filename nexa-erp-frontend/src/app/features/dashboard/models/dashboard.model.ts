@@ -6,6 +6,39 @@ export interface DashboardSummary {
   system: SystemSummary;
   health: HealthSummary;
   recentActivities: RecentActivity[];
+  budget: BudgetDashboard;
+  expense: ExpenseDashboard;
+}
+
+export interface BudgetTopAccount {
+  accountName: string;
+  budgetAmount: number;
+  actualAmount: number;
+  utilizationPercent: number;
+}
+
+export interface BudgetDashboard {
+  hasActiveBudget: boolean;
+  activeBudgetId: number | null;
+  activeBudgetName: string | null;
+
+  totalExpenseBudget: number;
+  totalExpenseActualYtd: number;
+  expenseUtilizationPercent: number;
+
+  totalRevenueBudget: number;
+  totalRevenueActualYtd: number;
+  revenueAchievementPercent: number;
+
+  topAccounts: BudgetTopAccount[];
+}
+
+export interface ExpenseDashboard {
+  draftCount: number;
+  draftTotalAmount: number;
+  postedThisMonthTotal: number;
+  recurringActiveCount: number;
+  recurringDueSoonCount: number;
 }
 
 export interface BusinessSummary {

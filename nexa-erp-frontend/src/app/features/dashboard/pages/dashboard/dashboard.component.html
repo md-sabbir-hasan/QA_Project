@@ -1,197 +1,295 @@
-<div class="dashboard-page">
+<div class="ledger-dashboard">
+
   @if (loading()) {
-    <div class="state-box">
-      <i class="bi bi-arrow-repeat spin"></i>
-      Loading dashboard...
+  <div class="loading-state">Loading your ledger...</div>
+  } @else if (summary(); as data) {
+
+  <header class="ledger-masthead">
+    <div>
+      <span class="eyebrow">{{ today | date:'EEEE, d MMMM y' }}</span>
+      <h1>Finance Command Deck</h1>
+      <p>Everything moving through the books today, at a glance.</p>
     </div>
-  } @else if (summary()) {
-    <section class="welcome-card">
-      <div>
-        <h1>Welcome back 👋</h1>
-        <p>NexaERP system overview and recent activity</p>
+  </header>
+
+  <section class="hero-row">
+    <div class="cash-ticket">
+      <div class="ticket-top">
+        <span class="ticket-label">Cash Position</span>
+        <span class="ticket-serial">NEXA · LEDGER</span>
       </div>
+      <div class="ticket-amount">
+        <span class="currency">৳</span>{{ data.business.cashPosition | number:'1.2-2' }}
+      </div>
+      <div class="ticket-meta">
+        <span>Receivable ৳{{ data.business.accountsReceivable | number:'1.0-0' }}</span>
+        <span class="divider">•</span>
+        <span>Payable ৳{{ data.business.accountsPayable | number:'1.0-0' }}</span>
+      </div>
+      <div class="ticket-notch"></div>
+    </div>
 
-      <button class="refresh-btn" type="button" (click)="loadDashboard()">
-        <i class="bi bi-arrow-clockwise"></i>
-        Refresh
-      </button>
-    </section>
+    <div class="action-stack">
+      @if (data.expense.draftCount > 0) {
+      <a routerLink="/expense" class="action-card warn">
+        <span class="action-count">{{ data.expense.draftCount }}</span>
+        <span class="action-copy">
+          <strong>Draft expenses waiting</strong>
+          ৳{{ data.expense.draftTotalAmount | number:'1.0-0' }} needs review before it posts
+        </span>
+      </a>
+      }
 
-    <section class="business-grid">
-      <div class="biz-card cash">
-        <div class="biz-icon"><i class="bi bi-wallet2"></i></div>
-        <div>
-          <span>Cash Position</span>
-          <strong>{{ summary()!.business.cashPosition | number:'1.2-2' }}</strong>
-          <small>Across all active bank/cash accounts</small>
+      @if (data.expense.recurringDueSoonCount > 0) {
+      <a routerLink="/recurring-expense" class="action-card info">
+        <span class="action-count">{{ data.expense.recurringDueSoonCount }}</span>
+        <span class="action-copy">
+          <strong>Recurring bills due soon</strong>
+          Within the next 7 days
+        </span>
+      </a>
+      }
+
+      @if (data.business.overdueInvoiceCount > 0) {
+      <a routerLink="/invoices" class="action-card danger">
+        <span class="action-count">{{ data.business.overdueInvoiceCount }}</span>
+        <span class="action-copy">
+          <strong>Overdue invoices</strong>
+          ৳{{ data.business.overdueInvoiceAmount | number:'1.0-0' }} outstanding past due date
+        </span>
+      </a>
+      }
+
+      @if (data.expense.draftCount === 0 && data.expense.recurringDueSoonCount === 0 && data.business.overdueInvoiceCount === 0) {
+      <div class="action-card clear">
+        <span class="action-count">✓</span>
+        <span class="action-copy">
+          <strong>All clear</strong>
+          No drafts pending, nothing overdue right now
+        </span>
+      </div>
+      }
+    </div>
+  </section>
+
+  <section class="index-row">
+    <div class="index-card">
+      <span class="index-label">Receivable</span>
+      <span class="index-value">৳{{ data.business.accountsReceivable | number:'1.0-0' }}</span>
+      <span class="index-sub">{{ data.business.overdueInvoiceCount }} overdue</span>
+    </div>
+    <div class="index-card">
+      <span class="index-label">Payable</span>
+      <span class="index-value">৳{{ data.business.accountsPayable | number:'1.0-0' }}</span>
+      <span class="index-sub">{{ data.business.overdueBillCount }} overdue</span>
+    </div>
+    <div class="index-card">
+      <span class="index-label">Posted this month</span>
+      <span class="index-value">৳{{ data.expense.postedThisMonthTotal | number:'1.0-0' }}</span>
+      <span class="index-sub">Expenses recorded</span>
+    </div>
+    <div class="index-card">
+      <span class="index-label">Recurring commitments</span>
+      <span class="index-value">{{ data.expense.recurringActiveCount }}</span>
+      <span class="index-sub">Active templates</span>
+    </div>
+  </section>
+
+  <section class="analysis-row">
+    <div class="panel gauge-panel">
+      <h2>Budget Health</h2>
+
+      @if (budgetGauge(); as g) {
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 180 180" class="gauge-svg">
+          <circle cx="90" cy="90" [attr.r]="g.radius" class="gauge-track" />
+          <circle cx="90" cy="90" [attr.r]="g.radius" class="gauge-fill" [class.over]="g.isOver"
+            [attr.stroke-dasharray]="g.circumference" [attr.stroke-dashoffset]="g.dashOffset" />
+        </svg>
+        <div class="gauge-center">
+          <span class="gauge-pct">{{ g.pct | number:'1.0-0' }}%</span>
+          <span class="gauge-caption">of budget used</span>
         </div>
       </div>
 
-      <div class="biz-card receivable">
-        <div class="biz-icon"><i class="bi bi-arrow-down-circle"></i></div>
-        <div>
-          <span>Accounts Receivable</span>
-          <strong>{{ summary()!.business.accountsReceivable | number:'1.2-2' }}</strong>
-          <small>
-            @if (summary()!.business.overdueInvoiceCount > 0) {
-              <span class="overdue-tag">{{ summary()!.business.overdueInvoiceCount }} overdue · {{ summary()!.business.overdueInvoiceAmount | number:'1.2-2' }}</span>
-            } @else {
-              No overdue invoices
-            }
-          </small>
+      <div class="gauge-meta">
+        <span>{{ g.activeBudgetName }}</span>
+        <span class="gauge-figures">
+          ৳{{ g.totalExpenseActualYtd | number:'1.0-0' }} / ৳{{ g.totalExpenseBudget | number:'1.0-0' }}
+        </span>
+      </div>
+
+      @if (g.topAccounts.length > 0) {
+      <div class="watchlist">
+        <span class="watchlist-title">Closest to limit</span>
+        @for (a of g.topAccounts; track a.accountName) {
+        <div class="watchlist-row">
+          <span class="watchlist-name">{{ a.accountName }}</span>
+          <div class="watchlist-bar">
+            <div class="watchlist-fill" [class.over]="a.utilizationPercent > 100"
+              [style.width.%]="minPct(a.utilizationPercent)"></div>
+          </div>
+          <span class="watchlist-pct" [class.over]="a.utilizationPercent > 100">
+            {{ a.utilizationPercent | number:'1.0-0' }}%
+          </span>
         </div>
+        }
       </div>
-
-      <div class="biz-card payable">
-        <div class="biz-icon"><i class="bi bi-arrow-up-circle"></i></div>
-        <div>
-          <span>Accounts Payable</span>
-          <strong>{{ summary()!.business.accountsPayable | number:'1.2-2' }}</strong>
-          <small>
-            @if (summary()!.business.overdueBillCount > 0) {
-              <span class="overdue-tag">{{ summary()!.business.overdueBillCount }} overdue · {{ summary()!.business.overdueBillAmount | number:'1.2-2' }}</span>
-            } @else {
-              No overdue bills
-            }
-          </small>
-        </div>
+      }
+      } @else {
+      <div class="gauge-empty">
+        <p>No active budget for this fiscal year yet.</p>
+        <a routerLink="/budget/new">Create one →</a>
       </div>
-    </section>
+      }
+    </div>
 
-    <section class="stats-grid">
-      <div class="stat-card">
-        <span>Users</span>
-        <strong>{{ summary()!.users.total }}</strong>
-        <small>Active: {{ summary()!.users.active }}</small>
-      </div>
-
-      <div class="stat-card">
-        <span>Roles</span>
-        <strong>{{ summary()!.security.totalRoles }}</strong>
-        <small>{{ summary()!.security.totalPermissions }} permissions</small>
-      </div>
-
-      <div class="stat-card">
-        <span>Accounts</span>
-        <strong>{{ summary()!.finance.totalAccounts }}</strong>
-        <small>Chart of accounts</small>
-      </div>
-
-      <div class="stat-card">
-        <span>Journals</span>
-        <strong>{{ summary()!.finance.totalJournalEntries }}</strong>
-        <small>Posted: {{ summary()!.finance.postedJournalEntries }}</small>
-      </div>
-    </section>
-
-    <section class="content-grid">
-      <div class="panel trend-panel">
-        <div class="panel-header">
-          <h2>Revenue vs Expense (Last 6 Months)</h2>
-        </div>
-
-        <div class="trend-chart">
-          @for (item of summary()!.business.revenueTrend; track item.month; let i = $index) {
-            <div class="trend-bar-group">
-              <div class="bars">
-                <div class="bar revenue" [style.height.%]="barHeight(item.amount)" [title]="'Revenue: ' + (item.amount | number:'1.2-2')"></div>
-                <div class="bar expense" [style.height.%]="barHeight(summary()!.business.expenseTrend[i].amount)" [title]="'Expense: ' + (summary()!.business.expenseTrend[i].amount | number:'1.2-2')"></div>
-              </div>
-              <span>{{ item.month }}</span>
-            </div>
-          }
-        </div>
-
+    <div class="panel trend-panel">
+      <div class="trend-header">
+        <h2>Revenue vs Expense</h2>
         <div class="trend-legend">
-          <span><i class="dot revenue"></i> Revenue</span>
-          <span><i class="dot expense"></i> Expense</span>
+          <span class="legend-dot revenue"></span> Revenue
+          <span class="legend-dot expense"></span> Expense
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-header">
-          <h2>User Status</h2>
-        </div>
+      @if (trendChart(); as chart) {
+      <svg [attr.viewBox]="'0 0 ' + chart.width + ' ' + chart.height" class="trend-svg" preserveAspectRatio="none">
+        @for (line of chart.gridLines; track line.y) {
+        <line [attr.x1]="chart.plotLeft" [attr.x2]="chart.plotRight" [attr.y1]="line.y" [attr.y2]="line.y" class="grid-line" />
+        <text [attr.x]="chart.plotLeft - 8" [attr.y]="line.y + 3" class="grid-label" text-anchor="end">{{ line.label }}</text>
+        }
 
-        <div class="mini-grid">
-          <div><span>Active</span><strong>{{ summary()!.users.active }}</strong></div>
-          <div><span>Pending</span><strong>{{ summary()!.users.pending }}</strong></div>
-          <div><span>Inactive</span><strong>{{ summary()!.users.inactive }}</strong></div>
-          <div><span>Locked</span><strong>{{ summary()!.users.locked }}</strong></div>
+        <path [attr.d]="chart.revenueArea" class="revenue-area" />
+        <path [attr.d]="chart.revenueLine" class="revenue-line" />
+        <path [attr.d]="chart.expenseLine" class="expense-line" />
+
+        @for (p of chart.revenuePoints; track $index) {
+        <circle [attr.cx]="p.x" [attr.cy]="p.y" r="3.5" class="revenue-dot" />
+        }
+        @for (p of chart.expensePoints; track $index) {
+        <circle [attr.cx]="p.x" [attr.cy]="p.y" r="3.5" class="expense-dot" />
+        }
+
+        @for (m of chart.months; track $index) {
+        <text [attr.x]="chart.plotLeft + ($index * ((chart.plotRight - chart.plotLeft) / (chart.months.length - 1 || 1)))"
+          [attr.y]="chart.plotBottom + 22" class="month-label" text-anchor="middle">{{ m }}</text>
+        }
+      </svg>
+      } @else {
+      <div class="trend-empty">No trend data yet.</div>
+      }
+    </div>
+  </section>
+
+  <!-- Operations: Users, Journal, Health, Quick Actions -->
+  <section class="ops-row">
+
+    <div class="panel stat-panel">
+      <h2>User Status</h2>
+      <div class="stat-grid">
+        <div class="stat-cell">
+          <span class="stat-dot green"></span>
+          <span class="stat-value">{{ data.users.active }}</span>
+          <span class="stat-label">Active</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-dot brass"></span>
+          <span class="stat-value">{{ data.users.pending }}</span>
+          <span class="stat-label">Pending</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-dot slate"></span>
+          <span class="stat-value">{{ data.users.inactive }}</span>
+          <span class="stat-label">Inactive</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-dot red"></span>
+          <span class="stat-value">{{ data.users.locked }}</span>
+          <span class="stat-label">Locked</span>
         </div>
       </div>
+    </div>
 
-      <div class="panel">
-        <div class="panel-header">
-          <h2>Journal Status</h2>
+    <div class="panel stat-panel">
+      <h2>Journal Status</h2>
+      <div class="stat-grid">
+        <div class="stat-cell">
+          <span class="stat-dot green"></span>
+          <span class="stat-value">{{ data.finance.postedJournalEntries }}</span>
+          <span class="stat-label">Posted</span>
         </div>
-
-        <div class="mini-grid">
-          <div><span>Posted</span><strong>{{ summary()!.finance.postedJournalEntries }}</strong></div>
-          <div><span>Draft</span><strong>{{ summary()!.finance.draftJournalEntries }}</strong></div>
-          <div><span>Reversed</span><strong>{{ summary()!.finance.reversedJournalEntries }}</strong></div>
-          <div><span>Total</span><strong>{{ summary()!.finance.totalJournalEntries }}</strong></div>
+        <div class="stat-cell">
+          <span class="stat-dot brass"></span>
+          <span class="stat-value">{{ data.finance.draftJournalEntries }}</span>
+          <span class="stat-label">Draft</span>
         </div>
-      </div>
-
-      <div class="panel recent-panel">
-        <div class="panel-header">
-          <h2>Recent Activity</h2>
+        <div class="stat-cell">
+          <span class="stat-dot red"></span>
+          <span class="stat-value">{{ data.finance.reversedJournalEntries }}</span>
+          <span class="stat-label">Reversed</span>
         </div>
-
-        <div class="activity-list">
-          @for (activity of summary()!.recentActivities; track activity.createdAt) {
-            <div class="activity-item">
-              <div class="dot"></div>
-              <div>
-                <strong>{{ activity.description || (activity.action + ' ' + activity.entityName) }}</strong>
-                <span>{{ activity.userName }} · {{ activity.createdAt | date:'medium' }}</span>
-              </div>
-            </div>
-          } @empty {
-            <div class="state-box">No recent activity</div>
-          }
+        <div class="stat-cell">
+          <span class="stat-dot slate"></span>
+          <span class="stat-value">{{ data.finance.totalJournalEntries }}</span>
+          <span class="stat-label">Total</span>
         </div>
       </div>
+    </div>
 
-      <div class="panel">
-        <div class="panel-header">
-          <h2>Quick Actions</h2>
+    <div class="panel health-panel">
+      <h2>System Health</h2>
+      <div class="health-list">
+        <div class="health-row">
+          <span class="health-name">Application</span>
+          <span class="health-pill" [class]="healthClass(data.health.application)">{{ data.health.application }}</span>
         </div>
-
-        <div class="quick-actions">
-          <a routerLink="/users"><i class="bi bi-person-plus"></i> Users</a>
-          <a routerLink="/roles"><i class="bi bi-person-badge"></i> Roles</a>
-          <a routerLink="/accounts"><i class="bi bi-diagram-3"></i> Accounts</a>
-          <a routerLink="/journals"><i class="bi bi-journal-text"></i> Journal</a>
+        <div class="health-row">
+          <span class="health-name">Database</span>
+          <span class="health-pill" [class]="healthClass(data.health.database)">{{ data.health.database }}</span>
         </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">
-          <h2>System Health</h2>
-        </div>
-
-        <div class="health-list">
-          <div><span>Application</span><strong>{{ summary()!.health.application }}</strong></div>
-          <div><span>Database</span><strong>{{ summary()!.health.database }}</strong></div>
-          <div><span>Mail</span><strong>{{ summary()!.health.mail }}</strong></div>
+        <div class="health-row">
+          <span class="health-name">Mail</span>
+          <span class="health-pill" [class]="healthClass(data.health.mail)">{{ data.health.mail }}</span>
         </div>
       </div>
+      <div class="health-meta">
+        <span>v{{ data.system.applicationVersion }}</span>
+        <span class="divider">•</span>
+        <span>{{ data.system.environment }}</span>
+      </div>
+    </div>
 
-      <div class="panel">
-        <div class="panel-header">
-          <h2>System Info</h2>
-        </div>
+    <div class="panel quick-actions-panel">
+      <h2>Quick Actions</h2>
+      <div class="quick-actions-grid">
+        <a routerLink="/users" class="quick-action"><i class="bi bi-people-fill"></i> Users</a>
+        <a routerLink="/roles" class="quick-action"><i class="bi bi-shield-lock-fill"></i> Roles</a>
+        <a routerLink="/accounts" class="quick-action"><i class="bi bi-diagram-3-fill"></i> Accounts</a>
+        <a routerLink="/journals" class="quick-action"><i class="bi bi-journal-text"></i> Journal</a>
+        <a routerLink="/expense" class="quick-action"><i class="bi bi-wallet2"></i> Expenses</a>
+        <a routerLink="/budget" class="quick-action"><i class="bi bi-pie-chart-fill"></i> Budget</a>
+      </div>
+    </div>
 
-        <div class="info-list">
-          <div><span>Version</span><strong>{{ summary()!.system.applicationVersion }}</strong></div>
-          <div><span>Environment</span><strong>{{ summary()!.system.environment }}</strong></div>
-          <div><span>Java</span><strong>{{ summary()!.system.javaVersion }}</strong></div>
-          <div><span>Timezone</span><strong>{{ summary()!.system.serverTimezone }}</strong></div>
-          <div><span>Server Time</span><strong>{{ summary()!.system.serverTime | date:'medium' }}</strong></div>
+  </section>
+
+  <section class="panel ledger-log-panel">
+    <h2>Ledger Log</h2>
+    <div class="ledger-log">
+      @for (activity of data.recentActivities; track $index) {
+      <div class="log-row">
+        <span class="log-dot" [class]="activityColor(activity.action)"></span>
+        <div class="log-body">
+          <span class="log-title">{{ activity.action }} — {{ activity.entityName }} #{{ activity.entityId }}</span>
+          <span class="log-meta">{{ activity.userName }} · {{ activity.createdAt | date:'d MMM, h:mm a' }}</span>
         </div>
       </div>
-    </section>
+      } @empty {
+      <div class="log-empty">No activity recorded yet.</div>
+      }
+    </div>
+  </section>
+
   }
 </div>
