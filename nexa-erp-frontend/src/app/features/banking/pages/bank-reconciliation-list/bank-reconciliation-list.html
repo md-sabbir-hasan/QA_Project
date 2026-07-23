@@ -11,7 +11,9 @@
     </div>
 
     <div class="hero-actions">
-      <button class="hero-btn" type="button" (click)="openStartModal()">
+      <button
+      *appHasPermission="'CREATE_BANKING'"
+       class="hero-btn" type="button" (click)="openStartModal()">
         <i class="bi bi-plus-circle"></i>
         Start Reconciliation
       </button>
@@ -81,7 +83,9 @@
                   </span>
                 </td>
                 <td class="text-end">
-                  <button class="icon-action edit" type="button" (click)="openReconciliation(r)" title="Open">
+                  <button
+                  *appHasPermission="'CREATE_BANKING'"
+                   class="icon-action edit" type="button" (click)="openReconciliation(r)" title="Open">
                     <i class="bi bi-arrow-up-right-circle"></i>
                   </button>
                 </td>

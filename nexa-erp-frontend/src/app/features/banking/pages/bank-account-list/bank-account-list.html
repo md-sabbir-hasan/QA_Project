@@ -1,12 +1,16 @@
 <div class="coa-page">
   <section class="finance-hero">
     <div class="hero-actions">
-      <a class="secondary-btn" routerLink="/banking/transactions">
+      <a
+      *appHasPermission="'VIEW_BANKING'"
+       class="secondary-btn" routerLink="/banking/transactions">
         <i class="bi bi-arrow-left-right"></i>
         View Transactions
       </a>
 
-      <button class="hero-btn" type="button" (click)="openCreateModal()">
+      <button
+      *appHasPermission="'CREATE_BANKING'"
+       class="hero-btn" type="button" (click)="openCreateModal()">
         <i class="bi bi-plus-circle"></i>
         New Bank Account
       </button>
@@ -128,14 +132,20 @@
                   </span>
                 </td>
                 <td class="text-end">
-                  <a class="icon-action" [routerLink]="['/banking/transactions']" [queryParams]="{ bankAccountId: account.id }">
+                  <a
+                  *appHasPermission="'VIEW_BANKING'"
+                   class="icon-action" [routerLink]="['/banking/transactions']" [queryParams]="{ bankAccountId: account.id }">
                     <i class="bi bi-arrow-left-right"></i>
                   </a>
-                  <button class="icon-action edit" type="button" (click)="openEditModal(account)">
+                  <button
+                  *appHasPermission="'EDIT_BANKING'"
+
+                   class="icon-action edit" type="button" (click)="openEditModal(account)">
                     <i class="bi bi-pencil"></i>
                   </button>
                   @if (account.isActive) {
                     <button
+                    *appHasPermission="'EDIT_BANKING'"
                       class="icon-action danger"
                       type="button"
                       (click)="deactivateAccount(account)"
@@ -144,6 +154,7 @@
                     </button>
                   } @else {
                     <button
+                    *appHasPermission="'EDIT_BANKING'"
                       class="icon-action success"
                       type="button"
                       (click)="activateAccount(account)"

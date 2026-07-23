@@ -7,11 +7,15 @@
     </div>
 
     <div class="hero-actions">
-      <button class="secondary-btn" type="button" (click)="openRunAllModal()">
+      <button
+      *appHasPermission="'RUN_DEPRECIATION'"
+       class="secondary-btn" type="button" (click)="openRunAllModal()">
         <i class="bi bi-calculator"></i>
         Run Depreciation (All)
       </button>
-      <button class="hero-btn" type="button" (click)="openRegisterModal()">
+      <button
+      *appHasPermission="'CREATE_FIXED_ASSET'"
+       class="hero-btn" type="button" (click)="openRegisterModal()">
         <i class="bi bi-plus-circle"></i>
         Register Asset
       </button>
@@ -84,7 +88,9 @@
                   </span>
                 </td>
                 <td class="text-end">
-                  <button class="icon-action edit" type="button" (click)="openAsset(a)" title="Open">
+                  <button
+                  *appHasPermission="'EDIT_FIXED_ASSET'"
+                   class="icon-action edit" type="button" (click)="openAsset(a)" title="Open">
                     <i class="bi bi-arrow-up-right-circle"></i>
                   </button>
                 </td>
@@ -104,7 +110,9 @@
             <h2>Register Fixed Asset</h2>
             <p>Link this asset to its GL accounts so depreciation posts automatically.</p>
           </div>
-          <button class="close-btn" type="button" (click)="closeRegisterModal()">
+          <button
+          *appHasPermission="'DISPOSE_FIXED_ASSET'"
+           class="close-btn" type="button" (click)="closeRegisterModal()">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
@@ -192,7 +200,9 @@
               <button class="secondary-btn" type="button" style="color:#334155;border-color:#cbd5e1;" (click)="closeRegisterModal()">
                 Cancel
               </button>
-              <button class="hero-btn" type="submit" [disabled]="submitting()">
+              <button
+              *appHasPermission="'CREATE_FIXED_ASSET'"
+               class="hero-btn" type="submit" [disabled]="submitting()">
                 {{ submitting() ? 'Saving...' : 'Register' }}
               </button>
             </div>
@@ -227,7 +237,9 @@
             <button class="secondary-btn" type="button" style="color:#334155;border-color:#cbd5e1;" (click)="closeRunAllModal()">
               Cancel
             </button>
-            <button class="hero-btn" type="button" [disabled]="submitting()" (click)="submitRunAll()">
+            <button
+            *appHasPermission="'CREATE_FIXED_ASSET'"
+             class="hero-btn" type="button" [disabled]="submitting()" (click)="submitRunAll()">
               {{ submitting() ? 'Running...' : 'Run Depreciation' }}
             </button>
           </div>

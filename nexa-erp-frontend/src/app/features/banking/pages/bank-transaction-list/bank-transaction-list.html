@@ -11,12 +11,16 @@
     </div>
 
     <div class="hero-actions">
-      <button class="secondary-btn" type="button" (click)="openTransferModal()">
+      <button
+       *appHasPermission="'CREATE_BANKING'"
+        class="secondary-btn" type="button" (click)="openTransferModal()">
         <i class="bi bi-arrow-left-right"></i>
         Transfer
       </button>
 
-      <button class="hero-btn" type="button" (click)="openCreateModal()">
+      <button
+       *appHasPermission="'CREATE_BANKING'"
+        class="hero-btn" type="button" (click)="openCreateModal()">
         <i class="bi bi-plus-circle"></i>
         New Transaction
       </button>
@@ -153,6 +157,7 @@
                   @if (!txn.voided) {
                     @if (!txn.reconciled) {
                       <button
+                      *appHasPermission="'CREATE_BANKING'"
                         class="icon-action success"
                         type="button"
                         (click)="reconcileTransaction(txn)"
@@ -161,6 +166,7 @@
                         <i class="bi bi-check-circle"></i>
                       </button>
                       <button
+                      *appHasPermission="'CREATE_BANKING'"
                         class="icon-action danger"
                         type="button"
                         (click)="voidTransactionAction(txn)"
@@ -170,6 +176,7 @@
                       </button>
                     } @else {
                       <button
+                      *appHasPermission="'CREATE_BANKING'"
                         class="icon-action"
                         type="button"
                         (click)="unreconcileTransaction(txn)"

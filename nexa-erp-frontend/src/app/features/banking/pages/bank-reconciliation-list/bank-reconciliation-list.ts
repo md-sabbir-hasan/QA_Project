@@ -8,11 +8,12 @@ import { BankAccount } from '../../models/bank-account.model';
 import { BankReconciliation, BankReconciliationStartRequest } from '../../models/bank-reconciliation.model';
 import { BankAccountService } from '../../services/bank-account.service';
 import { BankReconciliationService } from '../../services/bank-reconciliation.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-bank-reconciliation-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe, RouterLink],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe, RouterLink, HasPermissionDirective],
   templateUrl: './bank-reconciliation-list.html',
   styleUrl: './bank-reconciliation-list.scss',
 })

@@ -6,6 +6,7 @@ import { APP_CONFIG } from '../../../../core/config/app.config';
 import { AlertService } from '../../../../core/services/alert.service';
 import { Party } from '../../models/party.model';
 import { PartyService } from '../../services/party.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 type PartyDocumentType = 'tradeLicense' | 'binCertificate' | 'tinCertificate' | 'nid';
 
@@ -18,7 +19,7 @@ interface PartyDocumentCard {
 @Component({
   selector: 'app-party-details',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, DecimalPipe],
+  imports: [CommonModule, RouterLink, DatePipe, DecimalPipe, HasPermissionDirective],
   templateUrl: './party-details.html',
   styleUrl: './party-details.scss',
 })

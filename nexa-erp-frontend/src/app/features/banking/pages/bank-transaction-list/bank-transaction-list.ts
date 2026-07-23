@@ -20,11 +20,12 @@ import {
 } from '../../models/bank-transaction.model';
 import { BankAccountService } from '../../services/bank-account.service';
 import { BankTransactionService } from '../../services/bank-transaction.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-bank-transaction-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe, RouterLink],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe, RouterLink, HasPermissionDirective],
   templateUrl: './bank-transaction-list.html',
   styleUrl: './bank-transaction-list.scss',
 })

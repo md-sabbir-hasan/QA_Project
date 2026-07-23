@@ -6,7 +6,9 @@
       <p>Manage customers, vendors, financial terms and documents.</p>
     </div>
 
-    <a routerLink="/party/new" class="new-btn">
+    <a
+    *appHasPermission="'CREATE_PARTY'"
+     routerLink="/party/new" class="new-btn">
       <i class="bi bi-plus-circle-fill"></i>
       New Party
     </a>
@@ -121,16 +123,24 @@
 
                 <td>
                   <div class="action-group">
-                    <a [routerLink]="['/party', party.id]" class="btn-view"> View </a>
+                    <a
+                    *appHasPermission="'VIEW_PARTY'"
+                     [routerLink]="['/party', party.id]" class="btn-view"> View </a>
 
                     @if (party.isActive) {
-                      <a [routerLink]="['/party', party.id, 'edit']" class="btn-edit"> Edit </a>
+                      <a
+                       *appHasPermission="'EDIT_PARTY'"
+                       [routerLink]="['/party', party.id, 'edit']" class="btn-edit"> Edit </a>
 
-                      <button type="button" class="btn-danger" (click)="deactivate(party)">
+                      <button
+                       *appHasPermission="'DEACTIVATE_PARTY'"
+                       type="button" class="btn-danger" (click)="deactivate(party)">
                         Disable
                       </button>
                     } @else {
-                      <button type="button" class="btn-success" (click)="activate(party)">
+                      <button
+                       *appHasPermission="'DEACTIVATE_PARTY'"
+                       type="button" class="btn-success" (click)="activate(party)">
                         Activate
                       </button>
                     }

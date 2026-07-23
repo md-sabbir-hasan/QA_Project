@@ -9,13 +9,14 @@ import {
 import { AlertService } from '../../../../core/services/alert.service';
 import { Account, AccountRequest, AccountType } from '../../models/account.model';
 import { AccountService } from '../../services/account.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 type ViewMode = 'TREE' | 'TABLE';
 
 @Component({
   selector: 'app-account-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe, HasPermissionDirective],
   templateUrl: './account-list.html',
   styleUrl: './account-list.scss',
 })

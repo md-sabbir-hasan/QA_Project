@@ -6,11 +6,12 @@ import { RouterLink } from '@angular/router';
 import { AlertService } from '../../../../core/services/alert.service';
 import { Party, PartyType } from '../../models/party.model';
 import { PartyService } from '../../services/party.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-party-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, HasPermissionDirective],
   templateUrl: './party-list.html',
   styleUrl: './party-list.scss',
 })

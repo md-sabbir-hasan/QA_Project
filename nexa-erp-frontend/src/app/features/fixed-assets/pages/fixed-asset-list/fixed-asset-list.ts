@@ -8,11 +8,12 @@ import { Account } from '../../../accounts/models/account.model';
 import { AccountService } from '../../../accounts/services/account.service';
 import { DepreciationMethod, FixedAsset, FixedAssetRequest } from '../../models/fixed-asset.model';
 import { FixedAssetService } from '../../services/fixed-asset.service';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-fixed-asset-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe, HasPermissionDirective],
   templateUrl: './fixed-asset-list.html',
   styleUrl: './fixed-asset-list.scss',
 })

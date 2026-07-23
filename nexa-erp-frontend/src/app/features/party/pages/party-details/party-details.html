@@ -26,7 +26,9 @@
         Back
       </a>
 
-      <a [routerLink]="['/party', party()!.id, 'edit']" class="btn-edit">
+      <a
+      *appHasPermission="'EDIT_PARTY'"
+       [routerLink]="['/party', party()!.id, 'edit']" class="btn-edit">
         <i class="bi bi-pencil"></i>
         Edit
       </a>

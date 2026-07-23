@@ -18,11 +18,12 @@ import {
 } from '../../models/bank-account.model';
 import { BankAccountService } from '../../services/bank-account.service';
 import { RouterLink } from '@angular/router';
+import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-bank-account-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe, RouterLink],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DecimalPipe, RouterLink, HasPermissionDirective],
   templateUrl: './bank-account-list.html',
   styleUrl: './bank-account-list.scss',
 })

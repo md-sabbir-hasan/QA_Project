@@ -6,7 +6,9 @@
       <p>Organize financial accounts with hierarchy, controls and accounting rules.</p>
     </div>
 
-    <button class="hero-btn" type="button" (click)="openCreateModal()">
+    <button
+    *appHasPermission="'CREATE_ACCOUNT'"
+     class="hero-btn" type="button" (click)="openCreateModal()">
       <i class="bi bi-plus-circle"></i>
       New Account
     </button>
@@ -128,15 +130,21 @@
                     </span>
                   </td>
                   <td class="text-end">
-                    <button class="icon-action edit" type="button" (click)="openEditModal(account)">
+                    <button
+                    *appHasPermission="'EDIT_ACCOUNT'"
+                     class="icon-action edit" type="button" (click)="openEditModal(account)">
                       <i class="bi bi-pencil"></i>
                     </button>
                     @if (account.isActive) {
-                      <button class="icon-action danger" type="button" (click)="deactivateAccount(account)">
+                      <button
+                       *appHasPermission="'DEACTIVATE_ACCOUNT'"
+                       class="icon-action danger" type="button" (click)="deactivateAccount(account)">
                         <i class="bi bi-slash-circle"></i>
                       </button>
                     } @else {
-                      <button class="icon-action success" type="button" (click)="activateAccount(account)">
+                      <button
+                       *appHasPermission="'DEACTIVATE_ACCOUNT'"
+                       class="icon-action success" type="button" (click)="activateAccount(account)">
                         <i class="bi bi-check-circle"></i>
                       </button>
                     }
@@ -191,18 +199,24 @@
         <p class="description">{{ selectedAccount()!.description || 'No description provided.' }}</p>
 
         <div class="detail-actions">
-          <button type="button" (click)="openEditModal(selectedAccount()!)">
+          <button
+           *appHasPermission="'EDIT_ACCOUNT'"
+           type="button" (click)="openEditModal(selectedAccount()!)">
             <i class="bi bi-pencil"></i>
             Edit
           </button>
 
           @if (selectedAccount()!.isActive) {
-            <button class="danger" type="button" (click)="deactivateAccount(selectedAccount()!)">
+            <button
+             *appHasPermission="'DEACTIVATE_ACCOUNT'"
+             class="danger" type="button" (click)="deactivateAccount(selectedAccount()!)">
               <i class="bi bi-slash-circle"></i>
               Deactivate
             </button>
           } @else {
-            <button class="success" type="button" (click)="activateAccount(selectedAccount()!)">
+            <button
+             *appHasPermission="'DEACTIVATE_ACCOUNT'"
+             class="success" type="button" (click)="activateAccount(selectedAccount()!)">
               <i class="bi bi-check-circle"></i>
               Activate
             </button>
