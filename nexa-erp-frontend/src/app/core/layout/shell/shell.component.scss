@@ -45,3 +45,40 @@
     }
   }
 }
+
+/* =========================================================
+   Print layout
+   ========================================================= */
+
+@media print {
+  :host {
+    display: block !important;
+  }
+
+  .erp-shell {
+    display: block !important;
+    min-height: auto !important;
+    background: #ffffff !important;
+  }
+
+  app-sidebar,
+  app-header,
+  .sidebar-backdrop {
+    display: none !important;
+  }
+
+  .erp-main,
+  .erp-shell.sidebar-collapsed .erp-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  .erp-content {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+}

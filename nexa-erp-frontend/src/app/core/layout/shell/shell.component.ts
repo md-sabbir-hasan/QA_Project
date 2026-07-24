@@ -16,4 +16,7 @@ export class ShellComponent {
   toggleSidebar(): void {
     this.sidebarCollapsed.update(value => !value);
   }
+
+
+  
 }
